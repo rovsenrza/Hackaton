@@ -26,26 +26,26 @@ export default function HubLine({ data }: { data: StaticData }) {
         </p>
       </div>
       <div className="relative overflow-x-auto">
-        <ol className="relative flex min-w-[900px] items-start">
+        <ol className="relative flex w-full items-start">
           {hubs.map((h, i) => {
             const th = 3 + (h.gain_share / maxGain) * 7;
             const col = h.action === "new" ? C.hub : C.upgrade;
             return (
-              <li key={h.rank} className="relative flex-1">
+              <li key={h.rank} className="relative min-w-0 flex-1">
                 {i < hubs.length - 1 && <span className="absolute left-1/2 top-[13px] w-full -translate-y-1/2" style={{ height: th, background: col, opacity: 0.85 }} aria-hidden />}
                 <button
                   onClick={() => {
                     s.set({ selected: { kind: "hub", rank: h.rank } });
                     getMap()?.getMap().flyTo({ center: [h.lon, h.lat], zoom: 15, duration: 900 });
                   }}
-                  className="group relative mx-auto flex flex-col items-center"
+                  className="group relative mx-auto flex w-full flex-col items-center"
                   aria-label={`#${h.rank} ${h.label}`}
                 >
                   <span className="relative z-10 grid h-[26px] w-[26px] place-items-center rounded-full border-[3px] bg-[var(--bg)] text-[11px] font-bold tabular-nums"
                     style={{ borderColor: col, background: sel === h.rank ? col : C.bg, color: sel === h.rank ? C.bg : C.text }}>
                     {h.rank}
                   </span>
-                  <span className="mt-1 line-clamp-2 w-20 text-center text-[10.5px] leading-tight text-[var(--muted)] group-hover:text-[var(--text)]">{h.label}</span>
+                  <span className="mt-1 line-clamp-2 w-full px-0.5 text-center text-[10.5px] leading-tight text-[var(--muted)] group-hover:text-[var(--text)]">{h.label}</span>
                   <span className="text-[10px] tabular-nums text-[var(--muted)]">{pct(cum[i] / cum.at(-1)!, 0)}</span>
                 </button>
               </li>

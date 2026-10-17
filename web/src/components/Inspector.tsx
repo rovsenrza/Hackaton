@@ -127,8 +127,9 @@ export default function Inspector({ data }: { data: StaticData }) {
             </div>
           </div>
           <div className="mt-3"><HubMetrics h={hub} /></div>
-          {hub.stability != null && <Row k="Stabillik (çəkilər ±30%, 500 dəfə)" v={pct(hub.stability)} s="model" />}
-          <Row k="Boşluğun bağlanan payı" v={pct(hub.gain_share, 2)} s="model" />
+          {hub.stability != null && hub.rank <= 20 && (
+            <Row k="Stabillik: çəkilər ±30% dəyişəndə top-20-də qalır" v={pct(hub.stability)} s="model" hint="500 təsadüfi ssenari" />
+          )}
           {hub.qa && <p className="mt-2 text-xs leading-snug text-[var(--muted)]">Yerləşdirmə yoxlaması: {hub.qa}{hub.offset_m ? `, düyündən ${hub.offset_m} m` : ""}.</p>}
           {!s.optimized && (
             <label className="mt-3 block text-sm">

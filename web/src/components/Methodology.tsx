@@ -31,7 +31,7 @@ export default function Methodology({ data }: { data: StaticData }) {
     ["Özəl marşrutların sərnişini", `${rm.train_n} BakuBus marşrutunda öyrədilmiş log-ridge modeli (leave-one-out median xəta ${pct(rm.cv_leave_one_out.ridge_log.MdAPE)}, baza xətti ${pct(rm.cv_leave_one_out.baseline_median.MdAPE)}). Sonra AYNA-nın rəsmi gündəlik cəminə (${int(cal.official_daily)}) kalibrlənib, əmsal ${String(cal.factor).replace(".", ",")}.`],
     ["Boşluq", "Mövcud parkinqə real piyada məsafəsi: 150 m-ə qədər xidmət olunur, 400 m-dən uzaqda tam boşluqdur. Velo-zolaq 30% çəki ilə daxildir."],
     ["Hub seçimi", "Maksimal əhatə modeli (MCLP, greedy): 400 m piyada zonasında xidmət olunmamış tələbatı maksimallaşdırır, hub-lar arası ≥ 300 m."],
-    ["Yerləşdirmə", `Hub yolun hərəkət hissəsinə (yarım-en + 1,5 m), binaya, dəmir yoluna və suya düşmür, nəqliyyat düyünündən ≤ 60 m piyada məsafədədir. ${int(M.hubs.placement_all?.new ?? 0)} yeni yer yoxlanıb, ${int(M.hubs.placement_all?.rejected ?? 0)} namizəd rədd edilib.`],
+    ["Yerləşdirmə", `Hub yolun hərəkət hissəsinə (yarım-en + 2,5 m) düşmür, səki zolağının ortasına (yol kənarından ~4 m) yerləşdirilir; binaya, dəmir yoluna və suya düşmür, nəqliyyat düyünündən ≤ 60 m piyada məsafədədir. ${int(M.hubs.placement_all?.new ?? 0)} yeni yer yoxlanıb, ${int(M.hubs.placement_all?.rejected ?? 0)} namizəd rədd edilib.`],
     ["Kalibrləmə", "Gözlənilən səfər AYNA-nın real dövriyyəsinə bağlanıb: mövcud parkinqlər üçün model orta 12,2 səfər/nöqtə/gün verir."],
   ];
 
@@ -66,10 +66,10 @@ export default function Methodology({ data }: { data: StaticData }) {
         <section className="mt-10">
           <h2 className="text-lg font-semibold">Açıq datada tapdığımız problemlər</h2>
           <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-[var(--muted)]">
-            <li>Velo-parkinq faylında "yeni" adlanan {conv.parkings.raw.sep} nöqtədən {conv.parkings.raw.sep - conv.parkings.after_dedup_5m_in_baku.sep}-i köhnə məntəqələrin 5 m daxilində dublikatdır.</li>
+            <li>Velo-parkinq faylında «yeni» adlanan {conv.parkings.raw.sep} nöqtədən {conv.parkings.raw.sep - conv.parkings.after_dedup_5m_in_baku.sep}-i köhnə məntəqələrin 5 m daxilində dublikatdır.</li>
             <li>Velo-zolaq datasında {String(conv.bike_lanes.total_km).replace(".", ",")} km var, AYNA-nın açıqladığı rəqəm isə 67,5 km-dir.</li>
             <li>OSM-də Bakının inzibati sərhədi natamamdır (164 km²); geoBoundaries sərhədi ({int(conv.baku_area_km2)} km²) istifadə olunub.</li>
-            <li>Metro sərnişin faylında stansiya adları ingilis transliterasiyasındadır; çıxış faylında "28 May" Excel tərəfindən tarixə çevrilib.</li>
+            <li>Metro sərnişin faylında stansiya adları ingilis transliterasiyasındadır; çıxış faylında «28 May» Excel tərəfindən tarixə çevrilib.</li>
             <li>OSM-də velo-parkinqlərin cəmi ~10%-i var; AYNA datası bu boşluğu bağlayır.</li>
             <li>{conv.bus_routes.routes} avtobus marşrutundan yalnız {conv.bus_routes.with_ridership}-nin sərnişin datası açıqdır.</li>
           </ul>

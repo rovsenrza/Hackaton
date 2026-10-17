@@ -96,7 +96,7 @@ for c in C.itertuples():
             qa.append("60 m daxilində icazəli yer yoxdur")
         else:
             act.append("new"); px.append(p.x); py.append(p.y); off.append(o)
-            qa.append("yoldan ≥1.5 m, bina/dəmir yolu/su xaricində, düyünə ≤60 m piyada")
+            qa.append("səki zolağında: yoldan ≥2,5 m, bina/dəmir yolu/su xaricində, düyünə ≤60 m piyada")
 C["action"], C["px"], C["py"], C["offset_m"], C["qa"] = act, px, py, off, qa
 rep["placement_all"] = C.action.value_counts().to_dict()
 log(f"namizəd yerləşməsi: {rep['placement_all']}")

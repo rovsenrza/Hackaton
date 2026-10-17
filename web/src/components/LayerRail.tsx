@@ -66,10 +66,10 @@ export default function LayerRail({ data }: { data: StaticData }) {
     <aside className="absolute left-4 top-20 bottom-44 z-20 flex w-72 flex-col gap-3 overflow-y-auto rounded-md bg-[var(--surface)]/95 p-4 shadow-xl ring-1 ring-[var(--line)]" aria-label="Qatlar">
       <section>
         <h2 className="mb-2 text-sm font-semibold">Qatlar</h2>
-        <ul className="space-y-1">
+        <ul className="space-y-0.5">
           {rows.map((r) => (
             <li key={r.k}>
-              <label className="flex cursor-pointer items-start gap-2.5 rounded px-1.5 py-1 hover:bg-[var(--surface2)]">
+              <label className="flex cursor-pointer items-start gap-2.5 rounded px-1.5 py-0.5 hover:bg-[var(--surface2)]">
                 <input type="checkbox" checked={s.layers[r.k]} onChange={() => s.toggle(r.k)} className="mt-1 accent-[var(--hub)]" />
                 <span className="mt-1.5 w-4 shrink-0">{r.sw}</span>
                 <span className="leading-tight">
@@ -99,9 +99,11 @@ export default function LayerRail({ data }: { data: StaticData }) {
         <p className="mt-1 text-[11px] text-[var(--muted)]">{s.cellMetric === "gap" ? "Sabit siniflər" : "Kvantillər 50/70/85/95%: parlaq = ən yüksək 5%"}. {METRICS.find((m) => m.id === s.cellMetric)?.unit}</p>
       </section>
 
-      <section className="border-t border-[var(--line)] pt-3">
-        <h2 className="text-sm font-semibold">Ssenari çəkiləri</h2>
-        <p className="mb-2 text-xs text-[var(--muted)]">Tələbatın tərkibini dəyişin və hub-ları yenidən seçin.</p>
+      <details className="group border-t border-[var(--line)] pt-3" open={!!s.optimized}>
+        <summary className="cursor-pointer list-none text-sm font-semibold">
+          <span className="mr-1 inline-block transition-transform group-open:rotate-90">›</span> Ssenari çəkiləri
+        </summary>
+        <p className="mb-2 mt-1 text-xs text-[var(--muted)]">Tələbatın tərkibini dəyişin və hub-ları yenidən seçin.</p>
         {([["transit", "Nəqliyyat minikləri"], ["pop", "Əhali"], ["poi", "Cazibə nöqtələri"]] as const).map(([k, label]) => (
           <label key={k} className="mb-1.5 block text-xs">
             <span className="flex justify-between"><span>{label}</span><span className="tabular-nums text-[var(--muted)]">{Math.round((w[k] / (w.transit + w.pop + w.poi)) * 100)}%</span></span>
@@ -122,7 +124,7 @@ export default function LayerRail({ data }: { data: StaticData }) {
               className="rounded border border-[var(--line)] px-3 py-2 text-sm text-[var(--muted)] hover:text-[var(--text)]">Baza</button>
           )}
         </div>
-      </section>
+      </details>
     </aside>
   );
 }

@@ -112,6 +112,21 @@ export default function MapView({ data }: { data: StaticData }) {
   const selRank = s.selected?.kind === "hub" ? s.selected.rank : null;
   const selKey = s.selected?.kind === "whatif" ? s.selected.key : null;
 
+  // yenidən optimallaşdırılmış hub seçiləndə izoxron engine-dən gətirilir
+  const [optIso, setOptIso] = useState<{ rank: number; geom: GeoJSON.Geometry } | null>(null);
+  useEffect(() => {
+    if (!s.optimized || selRank == null || !s.engineOnline) return;
+    const h = s.optimized.find((x) => x.rank === selRank);
+    if (!h) return;
+    let alive = true;
+    post<WhatIfHub>("/evaluate", { lon: h.lon, lat: h.lat })
+      .then((r) => alive && setOptIso({ rank: selRank, geom: r.isochrone }))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [s.optimized, selRank, s.engineOnline]);
+
   const onClick = useCallback(
     async (info: PickingInfo) => {
       const st = useStore.getState();
@@ -248,7 +263,11 @@ export default function MapView({ data }: { data: StaticData }) {
     L.isochrones &&
       new GeoJsonLayer({
         id: "isochrones",
-        data: s.optimized || selRank == null ? { type: "FeatureCollection", features: [] } : { type: "FeatureCollection", features: data.isochrones.features.filter((f) => f.properties?.rank === selRank) },
+        data: selRank == null
+          ? { type: "FeatureCollection", features: [] }
+          : s.optimized
+            ? { type: "FeatureCollection", features: optIso && optIso.rank === selRank ? [{ type: "Feature", geometry: optIso.geom, properties: { rank: selRank } }] : [] }
+            : { type: "FeatureCollection", features: data.isochrones.features.filter((f) => f.properties?.rank === selRank) },
         getFillColor: (f: GeoJSON.Feature) => rgb(C.hub, f.properties?.rank === selRank ? 70 : 22),
         getLineColor: (f: GeoJSON.Feature) => rgb(C.hub, f.properties?.rank === selRank ? 255 : 110),
         getLineWidth: (f: GeoJSON.Feature) => (f.properties?.rank === selRank ? 2.2 : 0.8),
