@@ -50,16 +50,30 @@ export async function engineAlive(): Promise<boolean> {
   }
 }
 
-export async function post<T>(path: string, body: unknown): Promise<T> {
-  const r = await fetch(`${ENGINE}${path}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const d = await r.json();
-  if (!r.ok) throw Object.assign(new Error(d?.detail?.msg ?? d?.detail ?? "Engine xətası"), { detail: d?.detail });
+export class EngineOffline extends Error {}
+
+/** Engine sorğusu: şəbəkə xətası EngineOffline atır, server xətası isə aydın mesajla. */
+export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  let r: Response;
+  try {
+    r = await fetch(`${ENGINE}${path}`, { ...init, headers: { "content-type": "application/json", ...(init?.headers ?? {}) } });
+  } catch {
+    throw new EngineOffline("Geo Engine əlçatan deyil");
+  }
+  let d: unknown = null;
+  try {
+    d = await r.json();
+  } catch {
+    /* JSON olmayan cavab */
+  }
+  if (!r.ok) {
+    const det = (d as { detail?: { msg?: string } | string })?.detail;
+    throw Object.assign(new Error(typeof det === "string" ? det : det?.msg ?? `Engine xətası (${r.status})`), { detail: det });
+  }
   return d as T;
 }
+
+export const post = <T,>(path: string, body: unknown) => api<T>(path, { method: "POST", body: JSON.stringify(body) });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Metrics = Record<string, any>;

@@ -9,7 +9,7 @@ import type { PickingInfo } from "@deck.gl/core";
 import circle from "@turf/circle";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { post, type StaticData } from "@/lib/data";
+import { EngineOffline, post, type StaticData } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { C, GAP_STOPS, rgb, type RGBA } from "@/lib/theme";
 import type { H3Row, Hub, WhatIfHub } from "@/lib/types";
@@ -133,23 +133,28 @@ export default function MapView({ data }: { data: StaticData }) {
       if (!st.placing || !info.coordinate) return;
       const [lon, lat] = info.coordinate as [number, number];
       const key = `u${Date.now()}`;
-      if (!st.engineOnline) {
+      const offlineCircle = (msg: string) => {
         // ehtiyat rejimi: geodezik 400 m bufer (real izoxron engine tələb edir)
         const geom = circle([lon, lat], 0.4, { steps: 64, units: "kilometers" }).geometry;
         const h = { key, lon, lat, isochrone: geom, offline: true } as unknown as WhatIfHub;
-        st.set({ whatIf: [...st.whatIf, h], selected: { kind: "whatif", key }, placing: false,
-          toast: "Engine əlçatan deyil: düz xətt buferi göstərilir (real piyada izoxronu deyil)" });
-        return;
-      }
+        const cur = useStore.getState();
+        cur.set({ whatIf: [...cur.whatIf, h], selected: { kind: "whatif", key }, placing: false, toast: msg });
+      };
+      if (!st.engineOnline) return offlineCircle("Engine əlçatan deyil: düz xətt buferi göstərilir (real piyada izoxronu deyil)");
       try {
         const r = await post<WhatIfHub>("/evaluate", { lon, lat });
         const h = { ...r, key };
-        st.set({ whatIf: [...useStore.getState().whatIf, h], selected: { kind: "whatif", key }, placing: false,
+        const cur = useStore.getState();
+        cur.set({ whatIf: [...cur.whatIf, h], selected: { kind: "whatif", key }, placing: false,
           toast: r.clicked_blocked_by.length
             ? `Nöqtə ${r.clicked_blocked_by.map((b) => ({ road: "yolun hərəkət hissəsinə", building: "binaya", rail: "dəmir yoluna", water: "su sahəsinə" }[b] ?? b)).join(", ")} düşürdü, hub ${r.moved_m} m kənara, icazəli yerə köçürüldü`
-            : null });
+            : r.moved_m > 0 ? `Hub ${r.moved_m} m kənara, səki zolağına köçürüldü` : null });
       } catch (e) {
-        st.set({ toast: (e as Error).message, placing: false });
+        if (e instanceof EngineOffline) {
+          useStore.getState().set({ engineOnline: false });
+          return offlineCircle("Engine bağlantısı kəsildi: düz xətt buferi göstərilir");
+        }
+        useStore.getState().set({ toast: (e as Error).message, placing: false });
       }
     },
     [],
@@ -218,7 +223,7 @@ export default function MapView({ data }: { data: StaticData }) {
         id: "parkings",
         data: data.parkings.features,
         getPosition: (f: GeoJSON.Feature) => (f.geometry as GeoJSON.Point).coordinates as [number, number],
-        getFillColor: (f: GeoJSON.Feature) => rgb(C.bike, f.properties?.period === "sep" ? 255 : 200),
+        getFillColor: (f: GeoJSON.Feature) => (f.properties?.ptype === "MPV" ? rgb("#9BE3B8", 255) : rgb(C.bike, 210)),
         getRadius: 2.6,
         radiusUnits: "pixels",
         radiusMinPixels: 1.5,
@@ -364,7 +369,7 @@ export default function MapView({ data }: { data: StaticData }) {
         return { html: `<b>Marşrut ${d.route}</b><br/>~${Math.round(d.pax / 100) * 100} sərnişin/gün<br/>${d.status === "measured" ? "🟢 ölçülmüş (BakuBus)" : "🟡 proqnoz (model + AYNA cəminə kalibr)"}`, style };
       }
       if (id === "metro") return { html: `<b>${p.station_az} m/st.</b><br/>${p.exit}, ${p.address}<br/>Stansiya: ${approx(Number(p.station_pax))} sərnişin/gün 🟢`, style };
-      if (id === "parkings") return { html: `<b>${p.name || "Parkinq"}</b><br/>${p.period === "sep" ? "Sentyabr 2026 (yeni)" : "İyul 2026 siyahısı"}`, style };
+      if (id === "parkings") return { html: `<b>${p.name || "Parkinq"}</b><br/>${p.ptype === "MPV" ? "MPV (AYNA «yeni velosiped məntəqələri» qovluğu)" : "MPS (AYNA ümumi siyahısı)"}`, style };
       if (id === "stops") return { html: `<b>${p.name || "Dayanacaq"}</b><br/>${p.n_routes} marşrut · ~${p.boardings} minik/gün`, style };
       if (id === "lanes") return { html: `<b>Velo-zolaq</b><br/>${p.name ?? ""}<br/>${p.length_km} km`, style };
       if (id === "hubs" || id === "hub-beacons") {

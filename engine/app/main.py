@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -113,6 +114,7 @@ def optimize(q: OptIn):
         allowed &= C.action.eq("new").values
     left = w.copy()
     total = float(w.sum())
+    taken = np.zeros(len(w), bool)
     out = []
     for rank in range(1, q.n + 1):
         g = A @ left
@@ -121,10 +123,12 @@ def optimize(q: OptIn):
         if g[i] <= 0:
             break
         cov = A[i].indices
+        new = cov[~taken[cov]]
+        taken[cov] = True
         left[cov] = 0
         allowed &= np.hypot(PXY[:, 0] - PXY[i, 0], PXY[:, 1] - PXY[i, 1]) >= PARAMS["min_spacing"]
         c = C.iloc[i]
-        ev = core.evaluate(c.px, c.py, cov=cov)
+        ev = core.evaluate(c.px, c.py, cov=cov, new=new)
         lon, lat = to_ll(c.px, c.py)
         out.append({"rank": rank, "cand": i, "label": c.label, "anchor_kind": c.kind, "action": c.action,
                     "lon": lon, "lat": lat, "gain_share": round(float(g[i]) / total, 4), **ev})
@@ -156,7 +160,7 @@ def list_hubs():
 
 @app.post("/hubs")
 def create_hub(h: HubIn):
-    hid = f"AYAN-{datetime.now(timezone.utc):%Y%m%d}-u{int(time.time()) % 100000:05d}-{h.type}"
+    hid = f"AYAN-{datetime.now(timezone.utc):%Y%m%d}-u{uuid.uuid4().hex[:8]}-{h.type}"
     with Session(engine) as s:
         row = Hub(id=hid, rank=None, label=h.label, lon=h.lon, lat=h.lat, type=h.type, action=h.action,
                   docks=h.docks, status="Təklif", source="istifadəçi", data=h.data)

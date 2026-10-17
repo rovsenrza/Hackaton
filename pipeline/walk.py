@@ -27,14 +27,28 @@ class WalkNet:
         d, i = self.tree.query(np.atleast_2d(xy))
         return self.ids[i], d
 
-    def reach(self, x: float, y: float, limit: float) -> dict:
-        """(x, y)-dən `limit` m piyada daxilində çatılan düyünlər → {düyün: ümumi məsafə}."""
-        node, d0 = self.snap([x, y])
-        node, d0 = node[0], float(d0[0])
-        if d0 >= limit:
+    def reach(self, x: float, y: float, limit: float, k: int = 3) -> dict:
+        """(x, y)-dən `limit` m piyada daxilində çatılan düyünlər → {düyün: ümumi məsafə}.
+
+        Başlanğıc ən yaxın `k` düyünə (40 m daxilində) bağlanır: nöqtə bir neçə metr sürüşəndə
+        nəticə sıçrayışla dəyişmir (ən yaxın tək düyünə bağlanma qeyri-sabitdir).
+        """
+        d0, i0 = self.tree.query([x, y], k=k)
+        d0, i0 = np.atleast_1d(d0), np.atleast_1d(i0)
+        keep = (d0 <= max(40.0, d0.min())) & (d0 < limit)
+        if not keep.any():
             return {}
-        dist = nx.single_source_dijkstra_path_length(self.G, node, cutoff=limit - d0, weight="length")
-        return {n: d + d0 for n, d in dist.items()}
+        SRC = "__src__"
+        G = self.G
+        G.add_node(SRC)
+        try:
+            for dd, ii in zip(d0[keep], i0[keep]):
+                G.add_edge(SRC, self.ids[ii], length=float(dd))
+            dist = nx.single_source_dijkstra_path_length(G, SRC, cutoff=limit, weight="length")
+        finally:
+            G.remove_node(SRC)
+        dist.pop(SRC, None)
+        return dist
 
     # --- tələbat nöqtələri ------------------------------------------------
     def attach_points(self, xy: np.ndarray):

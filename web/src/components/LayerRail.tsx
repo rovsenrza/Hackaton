@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { post, type StaticData } from "@/lib/data";
+import { EngineOffline, post, type StaticData } from "@/lib/data";
 import { useStore, type LayerKey } from "@/lib/store";
 import { C, GAP_STOPS } from "@/lib/theme";
 import { int } from "@/lib/format";
@@ -33,7 +33,7 @@ export default function LayerRail({ data }: { data: StaticData }) {
     { k: "routes", label: "Avtobus marşrutları", note: `${data.routes.features.length} marşrut, qalınlıq √sərnişin`, sw: <Swatch color={C.bus} shape="line" /> },
     { k: "stops", label: "Avtobus dayanacaqları", note: `${int(data.stops.features.length)} (OSM)`, sw: <Swatch color={C.bus} /> },
     { k: "stations", label: "Avtovağzallar", note: `${data.hubs.arrival.length} Bakıda`, sw: <Swatch color={C.station} /> },
-    { k: "parkings", label: "Velo/scooter parkinqləri", note: `${data.parkings.features.length} (AYNA)`, sw: <Swatch color={C.bike} /> },
+    { k: "parkings", label: "Velo/scooter parkinqləri", note: `${data.parkings.features.length} (AYNA): MPS və açıq yaşıl MPV`, sw: <Swatch color={C.bike} /> },
     { k: "lanes", label: "Velo-zolaqlar", note: "AYNA, 2026", sw: <Swatch color={C.bike} shape="line" /> },
     { k: "cells", label: "İstilik xəritəsi", note: "H3 altıbucaqlılar", sw: <span className="inline-block h-2.5 w-4 rounded-sm" style={{ background: "linear-gradient(90deg,#4A406E,#D6564C,#FADE8C)" }} /> },
   ];
@@ -53,7 +53,8 @@ export default function LayerRail({ data }: { data: StaticData }) {
       s.set({ optimized: r.hubs.map((h) => ({ ...h, id: `opt-${h.rank}`, qa: "", offset_m: 0 })), selected: null,
         toast: `${r.hubs.length} hub ${r.ms} ms-də yenidən hesablandı` });
     } catch (e) {
-      s.set({ toast: (e as Error).message });
+      if (e instanceof EngineOffline) s.set({ engineOnline: false, toast: "Geo Engine əlçatan deyil: statik nəticələr göstərilir" });
+      else s.set({ toast: (e as Error).message });
     } finally {
       setBusy(false);
     }

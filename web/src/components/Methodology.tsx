@@ -5,7 +5,7 @@ import { int, pct } from "@/lib/format";
 
 const SOURCES = [
   ["Avtovağzallar, avtobus trayektoriyaları, velo-parkinqlər, velo-zolaqlar", "AYNA · opendata.az", "24.09.2026"],
-  ["BakuBus gündəlik sərnişin (63 marşrut)", "Bakı Metropoliteni · opendata.az", "13.10.2026"],
+  ["BakuBus gündəlik sərnişin (63 marşrut)", "Dərcçi: Bakı Metropoliteni QSC · opendata.az", "13.10.2026"],
   ["Metro çıxışları və stansiya sərnişinləri", "Bakı Metropoliteni · opendata.az", "13.10.2026"],
   ["Avtobusla gedişlərin rəsmi cəmi (yanvar–avqust 2026: 335,6 mln)", "AYNA, report.az", "09.2026"],
   ["Mikromobillik sifarişləri (sentyabr 2026: 547 758)", "AYNA, report.az", "10.2026"],
@@ -27,12 +27,12 @@ export default function Methodology({ data }: { data: StaticData }) {
 
   const steps: [string, string][] = [
     ["Piyada şəbəkəsi", `OSM-dən ${int(g.nodes)} düyünlü qraf, kənarlar 25 m addımla sıxlaşdırılıb. Bütün məsafələr UTM 39N-də metrlə ölçülür; Web Mercator Bakının enində məsafəni ~31% təhrif etdiyi üçün hesablamada istifadə olunmur.`],
-    ["Tələbat", "H3 res11 (~25 m) xanalarında: nəqliyyat minikləri 45%, əhali 35%, cazibə nöqtələri 20%. Hər komponent p99-a görə miqyaslanır, beləcə nisbətlər qorunur."],
+    ["Tələbat", "H3 res11 (~25 m) xanalarında üç komponent: nəqliyyat minikləri (metro çıxışları və avtobus dayanacaqları), əhali və cazibə nöqtələri. Hər komponent şəhər üzrə öz payına normallaşdırılır (cəm = 1), beləcə 45 / 35 / 20 çəkiləri tələbatın real tərkibini ifadə edir."],
     ["Özəl marşrutların sərnişini", `${rm.train_n} BakuBus marşrutunda öyrədilmiş log-ridge modeli (leave-one-out median xəta ${pct(rm.cv_leave_one_out.ridge_log.MdAPE)}, baza xətti ${pct(rm.cv_leave_one_out.baseline_median.MdAPE)}). Sonra AYNA-nın rəsmi gündəlik cəminə (${int(cal.official_daily)}) kalibrlənib, əmsal ${String(cal.factor).replace(".", ",")}.`],
     ["Boşluq", "Mövcud parkinqə real piyada məsafəsi: 150 m-ə qədər xidmət olunur, 400 m-dən uzaqda tam boşluqdur. Velo-zolaq 30% çəki ilə daxildir."],
     ["Hub seçimi", "Maksimal əhatə modeli (MCLP, greedy): 400 m piyada zonasında xidmət olunmamış tələbatı maksimallaşdırır, hub-lar arası ≥ 300 m."],
-    ["Yerləşdirmə", `Hub yolun hərəkət hissəsinə (yarım-en + 2,5 m) düşmür, səki zolağının ortasına (yol kənarından ~4 m) yerləşdirilir; binaya, dəmir yoluna və suya düşmür, nəqliyyat düyünündən ≤ 60 m piyada məsafədədir. ${int(M.hubs.placement_all?.new ?? 0)} yeni yer yoxlanıb, ${int(M.hubs.placement_all?.rejected ?? 0)} namizəd rədd edilib.`],
-    ["Kalibrləmə", "Gözlənilən səfər AYNA-nın real dövriyyəsinə bağlanıb: mövcud parkinqlər üçün model orta 12,2 səfər/nöqtə/gün verir."],
+    ["Yerləşdirmə", `Hub yolun hərəkət hissəsinə düşmür: OSM eni (zolaq × 3,5 m, magistrallarda +3,5 m avtobus/parklanma zolağı) + 2,5–3,5 m təhlükəsizlik. İkiistiqamətli yolun aralıq zolağı, binalar, dəmir yolu və su istisna olunur. Hub səki zolağına (yol kənarından ~5 m, bina cəbhəsinə yaxın), nəqliyyat düyünündən ≤ 60 m piyada məsafəyə qoyulur. AYNA parkinq koordinatı icazəli yerdədirsə saxlanılır. ${int(M.hubs.placement_all?.new ?? 0)} yeni yer tapılıb, ${int(M.hubs.placement_all?.rejected ?? 0)} namizəd rədd edilib.`],
+    ["Kalibrləmə və artım", "Səfər proqnozu AYNA-nın real dövriyyəsinə bağlanıb: sentyabr 2026, 547 758 sifariş / 30 gün / 1 495 nöqtə = 12,2 səfər/nöqtə/gün. Hub-un ümumi istifadəsi yer sayını müəyyən edir; əlavə səfər və CO₂ isə yalnız mövcud parkinqlərin xidmət etmədiyi və əvvəlki hub-ların əhatə etmədiyi tələbatdan hesablanır."],
   ];
 
   return (
@@ -56,17 +56,25 @@ export default function Methodology({ data }: { data: StaticData }) {
         <section className="mt-10">
           <h2 className="text-lg font-semibold">Doğrulama</h2>
           <ul className="mt-3 space-y-2 text-sm leading-relaxed">
-            <li>Tələbat indeksi AYNA-nın seçdiyi {v.positives} parkinq yerini {int(v.negatives)} təsadüfi məskunlaşmış xanadan <b>AUC {String(v.demand_auc_vs_ayna_parkings.D).replace(".", ",")}</b> ilə ayırır. Model AYNA mütəxəssislərinin məntiqini tanıyır.</li>
-            <li>AYNA-nın sentyabrda qurduğu {v.sep_expansion.n} yeni parkinqin {pct(v.sep_expansion.share_within_400m_of_existing)}-i mövcud parkinqə 400 m-dən yaxındır (median {v.sep_expansion.median_m_to_existing} m). Şəbəkə sıxlaşır, boşluqlar isə açıq qalır. AYAN məhz bu boşluqları hədəfləyir.</li>
+            <li>
+              Tələbat indeksi AYNA-nın seçdiyi {v.demand_auc_vs_ayna_parkings.n_pos} parkinq yerini təsadüfi məskunlaşmış xanalardan <b>AUC {String(v.demand_auc_vs_ayna_parkings.D).replace(".", ",")}</b> ilə ayırır.
+              Bunun bir hissəsi “mərkəz effekti”dir: təkcə mərkəzə yaxınlıq {String(v.demand_auc_vs_ayna_parkings["yalnız_mərkəzə_yaxınlıq"]).replace(".", ",")} verir.
+              Mərkəzdən 8 km halqası daxilində müqayisə edəndə model <b>{String(v.demand_auc_within_8km.D).replace(".", ",")}</b> verir (təkcə əhali {String(v.demand_auc_within_8km.pop_n).replace(".", ",")}, təkcə mərkəzə yaxınlıq {String(v.demand_auc_within_8km["yalnız_mərkəzə_yaxınlıq"]).replace(".", ",")}).
+              Bu, istifadə datası ilə doğrulama deyil: AYNA nöqtə üzrə sifariş datası verərsə, dəqiq test mümkündür.
+            </li>
+            <li>
+              AYNA datasında iki aktiv növü var: MPS ({conv.parkings.after_dedup_5m_same_type_in_baku.MPS}) və MPV ({conv.parkings.after_dedup_5m_same_type_in_baku.MPV}, “yeni velosiped məntəqələri” qovluğu).
+              MPV-lərin {pct(v.mpv_vs_mps.share_within_400m)}-i MPS-ə 400 m-dən yaxındır (median {v.mpv_vs_mps.median_m_to_mps} m), təsadüfi sakin üçün bu pay {pct(v.mpv_vs_mps.random_resident_share_within_400m)}-dir: yeni məntəqələr artıq xidmət olunan ərazilərdə toplanır.
+            </li>
             <li>Stabillik: çəkilər ±30% dəyişdirilərək 500 dəfə hesablanıb. Hər hub kartında top-20-də qalma faizi göstərilir.</li>
-            <li>Yerləşdirmə: {qa.placed} hub-un hamısı avtomatik yoxlamadan keçib, minimum aralıq {String(qa.min_spacing_m).replace(".", ",")} m-dir.</li>
+            <li>Yerləşdirmə: {qa.placed} hub-dan {qa.placed - qa.needs_review}-i avtomatik yoxlamadan keçib{qa.needs_review ? `, ${qa.needs_review}-i əl ilə yoxlanmalıdır` : ""}; {qa.moved} hub nəqliyyat düyünündən səki zolağına köçürülüb. Minimum aralıq {String(qa.min_spacing_m).replace(".", ",")} m-dir. Top-20 peyk görüntüsü üzərində əl ilə yoxlanılıb.</li>
           </ul>
         </section>
 
         <section className="mt-10">
           <h2 className="text-lg font-semibold">Açıq datada tapdığımız problemlər</h2>
           <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-[var(--muted)]">
-            <li>Velo-parkinq faylında «yeni» adlanan {conv.parkings.raw.sep} nöqtədən {conv.parkings.raw.sep - conv.parkings.after_dedup_5m_in_baku.sep}-i köhnə məntəqələrin 5 m daxilində dublikatdır.</li>
+            <li>Velo-parkinq faylının qovluq adları («12 iyul», «11 sentyabr») tarix kimi görünür, amma nöqtələr ad prefiksinə görə tam ayrılır (MPS / MPV): bu, tarix deyil, aktiv növüdür.</li>
             <li>Velo-zolaq datasında {String(conv.bike_lanes.total_km).replace(".", ",")} km var, AYNA-nın açıqladığı rəqəm isə 67,5 km-dir.</li>
             <li>OSM-də Bakının inzibati sərhədi natamamdır (164 km²); geoBoundaries sərhədi ({int(conv.baku_area_km2)} km²) istifadə olunub.</li>
             <li>Metro sərnişin faylında stansiya adları ingilis transliterasiyasındadır; çıxış faylında «28 May» Excel tərəfindən tarixə çevrilib.</li>

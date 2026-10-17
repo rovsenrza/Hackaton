@@ -51,19 +51,13 @@ pk = to_gdf(read_kmz(RAW / "velosiped_parkinqleri.kmz"))
 pk = pk[pk.geom_type == "Point"].copy()
 
 
-def period(folder: str) -> str:
-    if "Sightseeing" in folder:
-        return "tour"
-    if "yeni" in folder:
-        return "sep"   # 11 sentyabr: yeni məntəqələr
-    return "jul"       # 12 iyul: ümumi siyahı
+# Qovluq adları ("12 iyul", "11 sentyabr") tarix kimi görünür, amma nöqtələr ad prefiksinə görə
+# tam ayrılır: bütün "ümumi" nöqtələr MPS-*, bütün "yeni" nöqtələr MPV-*. Bu, aktiv növüdür.
+pk = pk[~pk.folder.str.contains("Sightseeing")].copy()
+pk["ptype"] = pk.name.str.extract(r"^\s*([A-Za-z]+)")[0].str.upper().fillna("OTHER")
+pk = pk.to_crs(UTM).reset_index(drop=True)
 
-
-pk["period"] = pk.folder.map(period)
-pk = pk[pk.period != "tour"].to_crs(UTM)
-
-# Dublikatlar: 5 m daxilində olan nöqtələr bir məntəqədir; köhnə (iyul) üstünlük alır
-pk = pk.sort_values("period", key=lambda s: s.map({"jul": 0, "sep": 1})).reset_index(drop=True)
+# Dublikatlar: eyni növ daxilində 5 m-dən yaxın nöqtələr bir məntəqədir (növlər arası yanaşma real ola bilər)
 keep, taken = [], set()
 sidx = pk.sindex
 for i, geom in enumerate(pk.geometry):
@@ -71,16 +65,16 @@ for i, geom in enumerate(pk.geometry):
         continue
     keep.append(i)
     for j in sidx.query(geom.buffer(5)):
-        if j != i:
+        if j != i and pk.ptype.iat[j] == pk.ptype.iat[i]:
             taken.add(int(j))
-raw_counts = pk.period.value_counts().to_dict()
+raw_counts = pk.ptype.value_counts().to_dict()
 pk = pk.loc[keep].to_crs(WGS84)
 pk = in_baku(pk).reset_index(drop=True)
 pk["id"] = [f"P{i+1}" for i in range(len(pk))]
-pk[["id", "name", "period", "geometry"]].to_file(BUILD / "parkings.gpkg")
+pk[["id", "name", "ptype", "geometry"]].to_file(BUILD / "parkings.gpkg")
 report["parkings"] = {
     "raw": {k: int(v) for k, v in raw_counts.items()},
-    "after_dedup_5m_in_baku": pk.period.value_counts().to_dict(),
+    "after_dedup_5m_same_type_in_baku": pk.ptype.value_counts().to_dict(),
     "total": len(pk),
 }
 

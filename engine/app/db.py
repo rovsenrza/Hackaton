@@ -39,12 +39,25 @@ class Hub(Base):
 engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
 
 
+SEED_KEYS = ("pop_newly_served", "trips_day", "trips_gross_day", "co2_t_year", "stability")
+
+
 def init_db(seed_hubs: list[dict]):
+    """Model hub-larını toxumla sinxronlaşdırır: yeni/yenilənmiş hub-lar yazılır, toxumda olmayan model
+    hub-ları silinir, istifadəçi statusları və qeydləri eyni ID üçün qorunur."""
     Base.metadata.create_all(engine)
+    seed_ids = {h["id"] for h in seed_hubs}
     with Session(engine) as s:
-        if s.query(Hub).count() == 0:
-            for h in seed_hubs:
-                s.add(Hub(id=h["id"], rank=h["rank"], label=h["label"], lon=h["lon"], lat=h["lat"], type=h["type"],
-                          action=h["action"], docks=h["docks"], status="Təklif", source="model",
-                          data={k: h[k] for k in ("pop_unserved_covered", "trips_day", "co2_t_year", "stability") if k in h}))
-            s.commit()
+        for row in s.query(Hub).filter(Hub.source == "model"):
+            if row.id not in seed_ids:
+                s.delete(row)
+        for h in seed_hubs:
+            row = s.get(Hub, h["id"])
+            fields = dict(rank=h["rank"], label=h["label"], lon=h["lon"], lat=h["lat"], type=h["type"],
+                          action=h["action"], docks=h["docks"], data={k: h[k] for k in SEED_KEYS if k in h})
+            if row is None:
+                s.add(Hub(id=h["id"], status="Təklif", source="model", **fields))
+            else:
+                for k, v in fields.items():
+                    setattr(row, k, v)
+        s.commit()

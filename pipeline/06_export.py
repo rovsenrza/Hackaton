@@ -42,7 +42,7 @@ metro["station_pax"] = metro.station_pax.round(-2)
 write_geojson(metro, "metro_exits", ["id", "station_az", "exit", "address", "station_pax"], simplify=False)
 
 write_geojson(gpd.read_file(BUILD / "bus_stations.gpkg"), "bus_stations", ["id", "name"], simplify=False)
-write_geojson(gpd.read_file(BUILD / "parkings.gpkg"), "parkings", ["id", "name", "period"], simplify=False)
+write_geojson(gpd.read_file(BUILD / "parkings.gpkg"), "parkings", ["id", "name", "ptype"], simplify=False)
 lanes = gpd.read_file(BUILD / "bike_lanes.gpkg")
 lanes["length_km"] = lanes.length_km.round(2)
 write_geojson(lanes, "bike_lanes", ["id", "name", "length_km"])

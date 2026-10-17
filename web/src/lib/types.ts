@@ -23,9 +23,13 @@ export interface Hub {
   type: HubType;
   docks: number;
   pop_covered: number;
-  pop_unserved_covered: number;
+  /** 400 m-də heç bir parkinqi olmayan və bu hub-la ilk dəfə xidmət alan sakinlər (artım) */
+  pop_newly_served: number;
   transit_daily: number;
+  /** yeni (artım) səfərlər: mövcud parkinqlərin xidmət etmədiyi tələbat */
   trips_day: number;
+  /** hub-un ümumi gözlənilən istifadəsi (yer sayı bununla ölçülür) */
+  trips_gross_day: number;
   co2_t_year: Co2Range;
   metro_stations: string[];
   metro_pax: number;
@@ -52,6 +56,7 @@ export interface HubsFile {
   walk_m: number;
   weights: { transit: number; pop: number; poi: number };
   curve: number[];
+  unserved_pop_total: number;
   hubs: Hub[];
   arrival: Arrival[];
 }

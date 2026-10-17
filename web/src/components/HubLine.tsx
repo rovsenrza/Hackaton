@@ -12,7 +12,9 @@ export default function HubLine({ data }: { data: StaticData }) {
   const hubs = (s.optimized ?? data.hubs.hubs).slice(0, 20);
   if (!hubs.length) return null;
   const maxGain = Math.max(...hubs.map((h) => h.gain_share));
-  const cum = hubs.reduce<number[]>((a, h) => [...a, (a.at(-1) ?? 0) + h.pop_unserved_covered], []);
+  // xidmətsiz tələbatın bağlanan payı (MCLP-nin öz meyarı), kumulyativ
+  const closed = hubs.reduce<number[]>((a, h) => [...a, (a.at(-1) ?? 0) + h.gain_share], []);
+  const newPop = hubs.reduce((a, h) => a + h.pop_newly_served, 0);
   const sel = s.selected?.kind === "hub" ? s.selected.rank : null;
 
   return (
@@ -22,7 +24,7 @@ export default function HubLine({ data }: { data: StaticData }) {
           Tikinti ardıcıllığı{s.optimized ? " (sizin ssenari)" : ""}
         </h2>
         <p className="text-xs text-[var(--muted)] tabular-nums">
-          İlk {hubs.length} hub {approx(cum.at(-1))} xidmət almayan sakinə 5 dəqiqəlik piyada çıxış verir
+          İlk {hubs.length} hub xidmətsiz tələbatın {pct(closed.at(-1), 1)}-ni bağlayır · {approx(newPop)} sakin ilk dəfə 5 dəqiqəlik çıxış qazanır
         </p>
       </div>
       <div className="relative overflow-x-auto">
@@ -46,7 +48,7 @@ export default function HubLine({ data }: { data: StaticData }) {
                     {h.rank}
                   </span>
                   <span className="mt-1 line-clamp-2 w-full px-0.5 text-center text-[10.5px] leading-tight text-[var(--muted)] group-hover:text-[var(--text)]">{h.label}</span>
-                  <span className="text-[10px] tabular-nums text-[var(--muted)]">{pct(cum[i] / cum.at(-1)!, 0)}</span>
+                  <span className="text-[10px] tabular-nums text-[var(--muted)]" title="Xidmətsiz tələbatın kumulyativ bağlanan payı">{pct(closed[i], 1)}</span>
                 </button>
               </li>
             );

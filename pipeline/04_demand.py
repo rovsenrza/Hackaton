@@ -212,14 +212,15 @@ cxy = gpd.GeoSeries(gpd.points_from_xy(lon, lat), crs=WGS84).to_crs(UTM)
 cells["x"], cells["y"] = cxy.x.values, cxy.y.values
 cells = cells[gpd.GeoSeries(cxy.values, crs=UTM).within(zone_u).values].reset_index(drop=True)
 
-# --- 8. Tələbat indeksi D (p99 miqyaslama + çəkilər) ------------------------
-scale = {}
+# --- 8. Tələbat indeksi D: hər komponent şəhər üzrə payına normallaşdırılır ------
+# (cəm = 1), buna görə çəkilər (45/35/20) D-nin real tərkibini ifadə edir.
+# D vahidi: "şəhər tələbatının milyonda biri".
+total = {}
 for k in W:
-    nz = cells[k][cells[k] > 0]
-    scale[k] = float(np.percentile(nz, 99)) if len(nz) else 1.0
-    cells[f"{k}_n"] = (cells[k] / scale[k]).clip(0, 1)
+    total[k] = float(cells[k].sum())
+    cells[f"{k}_n"] = cells[k] / total[k] * 1e6
 cells["D"] = sum(W[k] * cells[f"{k}_n"] for k in W)
-rep["scale_p99"] = {k: round(v, 2) for k, v in scale.items()}
+rep["demand_share"] = {k: round(float((W[k] * cells[f"{k}_n"]).sum() / cells.D.sum()), 3) for k in W}
 
 # --- 9. Boşluq: mövcud parkinqə və velo-zolağa real piyada məsafəsi ----------
 net.attach_points(cells[["x", "y"]].values)
@@ -263,12 +264,9 @@ def gap_from(park_subset):
 dl = cell_dist(multi_source(lane_pts, 800), 800)
 lane_gap = np.clip((dl - 200) / 600, 0, 1)
 pgap_all, dp_all = gap_from(parks)
-pgap_jul, _ = gap_from(parks[parks.period == "jul"])
 cells["d_park"], cells["d_lane"] = dp_all, dl
 cells["gap"] = 0.7 * pgap_all + 0.3 * lane_gap
-cells["gap_jul"] = 0.7 * pgap_jul + 0.3 * lane_gap  # zaman testi üçün: yalnız iyul parkinqləri
 cells["w"] = cells.D * cells.gap
-cells["w_jul"] = cells.D * cells.gap_jul
 
 cells.to_parquet(BUILD / "cells.parquet")
 rep["cells"] = {"n": len(cells), "pop_sum": round(float(cells["pop"].sum())),

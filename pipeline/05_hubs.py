@@ -66,7 +66,7 @@ for _, r in stops[stops.routes.str.len() >= 2].iterrows():
     C.append({"kind": "bus_stop", "ref": f"S{r.osm_id}", "label": nm, "x": r.geometry.x, "y": r.geometry.y})
 for _, r in parks.iterrows():
     C.append({"kind": "parking", "ref": r.id, "label": r["name"] or "Mövcud parkinq", "x": r.geometry.x, "y": r.geometry.y,
-              "period": r.period})
+              "ptype": r.ptype})
 C = pd.DataFrame(C)
 rep["candidates"] = C.kind.value_counts().to_dict()
 
@@ -113,6 +113,14 @@ A = sparse.csr_matrix((np.ones(sum(map(len, rows)), dtype=np.float32), (np.conca
 log(f"əhatə matrisi: {A.shape}, nnz={A.nnz}")
 
 
+# tip həddi: namizədlərin 400 m-dəki marşrut sayının 75-ci faizi; yer sayı: ümumi istifadənin paylanması
+ctx_routes = np.array([len(core.context(x, y)["bus_routes"]) for x, y in C[["px", "py"]].values[ok]])
+core.route_m = ROUTE_M = int(max(3, np.percentile(ctx_routes, 75)))
+gross_all = K * (A @ cells.D.values)[ok]
+core.gross_q = GROSS_Q = np.sort(gross_all)
+rep["typology"] = {"route_m_threshold": ROUTE_M, "gross_trips_p50": round(float(np.median(gross_all)), 1),
+                   "gross_trips_p90": round(float(np.percentile(gross_all, 90)), 1)}
+
 # --- 5. Greedy MCLP ---------------------------------------------------------------
 def greedy(w, n=N_MAX, allowed=None):
     """Xidmət olunmamış tələbatı (w) maksimallaşdıran sıralı hub seçimi."""
@@ -150,38 +158,66 @@ for _ in range(RUNS):
 stability = hits / RUNS
 log("stabillik testi bitdi")
 
-# --- 7. Doğrulama -------------------------------------------------------------------
+# --- 7. Doğrulama ---------------------------------------------------------------------
+# Tələbat indeksi AYNA-nın seçdiyi parkinq yerlərini tanıyırmı? Baza xətləri ilə birlikdə.
 pll = parks.to_crs(WGS84)
 pos_h = {h3.latlng_to_cell(g.y, g.x, 11) for g in pll.geometry}
 is_pos = cells.h3.isin(pos_h).values
-neg_pool = np.flatnonzero(~is_pos & (cells["pop"].values > 0))
-neg = rng.choice(neg_pool, min(20000, len(neg_pool)), replace=False)
-pos = np.flatnonzero(is_pos)
-yv = np.r_[np.ones(len(pos)), np.zeros(len(neg))]
-auc = {col: round(float(roc_auc_score(yv, cells[col].values[np.r_[pos, neg]])), 3) for col in ("D", "transit_n", "pop_n", "poi_n")}
-jul, sep = parks[parks.period == "jul"], parks[parks.period == "sep"]
-d_sep_jul = sep.geometry.apply(lambda g: jul.distance(g).min())
-rep["validation"] = {
-    "demand_auc_vs_ayna_parkings": auc, "positives": int(len(pos)), "negatives": int(len(neg)),
-    "sep_expansion": {"n": len(sep), "median_m_to_existing": round(float(d_sep_jul.median())),
-                      "share_within_400m_of_existing": round(float((d_sep_jul < 400).mean()), 3)},
-}
-log(f"doğrulama: AUC={auc}")
+cen = gpd.GeoSeries(gpd.points_from_xy([49.8352], [40.3716]), crs=WGS84).to_crs(UTM).iloc[0]
+dcen = np.hypot(cells.x.values - cen.x, cells.y.values - cen.y)
 
-# --- 8. Top hub-lar ------------------------------------------------------------------
+
+def auc_set(neg_mask, n=20000):
+    neg_pool = np.flatnonzero(~is_pos & neg_mask)
+    neg = rng.choice(neg_pool, min(n, len(neg_pool)), replace=False)
+    pos = np.flatnonzero(is_pos & neg_mask) if neg_mask is not True else np.flatnonzero(is_pos)
+    yv = np.r_[np.ones(len(pos)), np.zeros(len(neg))]
+    idx = np.r_[pos, neg]
+    out = {col: round(float(roc_auc_score(yv, cells[col].values[idx])), 3) for col in ("D", "transit_n", "pop_n", "poi_n")}
+    out["yalnız_mərkəzə_yaxınlıq"] = round(float(roc_auc_score(yv, -dcen[idx])), 3)
+    out["n_pos"], out["n_neg"] = int(len(pos)), int(len(neg))
+    return out
+
+
+populated = cells["pop"].values > 0
+auc_all = auc_set(populated)
+auc_ring = auc_set(populated & (dcen <= 8000))  # mərkəzdən 8 km halqası: "mərkəz effekti" çıxarılır
+
+# MPV (yeni velosiped məntəqələri qovluğu) MPS şəbəkəsinin yanında yerləşirmi? Təsadüfi baza ilə.
+mps, mpv = parks[parks.ptype == "MPS"], parks[parks.ptype == "MPV"]
+mps_tree = __import__("shapely").STRtree(list(mps.geometry))
+d_mpv = np.array([mps.geometry.iloc[mps_tree.nearest(g)].distance(g) for g in mpv.geometry])
+pw = cells["pop"].values / cells["pop"].values.sum()
+rnd = rng.choice(len(cells), 5000, p=pw)
+d_rnd = np.array([mps.geometry.iloc[mps_tree.nearest(Point(cells.x.values[i], cells.y.values[i]))].distance(Point(cells.x.values[i], cells.y.values[i])) for i in rnd])
+rep["validation"] = {
+    "demand_auc_vs_ayna_parkings": auc_all,
+    "demand_auc_within_8km": auc_ring,
+    "mpv_vs_mps": {"n_mpv": int(len(mpv)), "median_m_to_mps": round(float(np.median(d_mpv))),
+                   "share_within_400m": round(float((d_mpv < 400).mean()), 3),
+                   "random_resident_share_within_400m": round(float((d_rnd < 400).mean()), 3)},
+}
+log(f"doğrulama: AUC={auc_all['D']} (8 km: {auc_ring['D']})")
+
+# --- 8. Top hub-lar (göstəricilər ARTIM kimi: əvvəlki hub-ların əhatə etmədiyi xanalar) -----
 hubs = []
+taken = np.zeros(len(cells), bool)
 for rank, (i, g) in enumerate(zip(picks, gains), 1):
     c = C.iloc[i]
-    ev = core.evaluate(c.px, c.py, cov=A[i].indices)
+    cov = A[i].indices
+    new = cov[~taken[cov]]
+    taken[cov] = True
+    ev = core.evaluate(c.px, c.py, cov=cov, new=new)
     ll = gpd.GeoSeries([Point(c.px, c.py)], crs=UTM).to_crs(WGS84).iloc[0]
     hubs.append({"rank": rank, "id": f"AYAN-20261018-{c.ref.lower()}-{ev['type']}", "cand": int(i),
                  "action": c.action, "anchor_kind": c.kind, "label": c.label,
-                 "lon": round(ll.x, 6), "lat": round(ll.y, 6), "x": round(c.px, 1), "y": round(c.py, 1),
+                 "lon": round(ll.x, 7), "lat": round(ll.y, 7), "x": round(c.px, 2), "y": round(c.py, 2),
                  "offset_m": c.offset_m, "qa": c.qa, "gain_w": round(g, 2), "gain_share": round(g / W_TOTAL, 4),
                  "stability": round(float(stability[i]), 2), **ev})
 hxy = np.array([[h["x"], h["y"]] for h in hubs])
 dmin = [float(np.sort(np.hypot(*(hxy - p).T))[1]) for p in hxy]
-rep["placement_qa"] = {"placed": len(hubs), "new": sum(h["action"] == "new" for h in hubs),
+rep["placement_qa"] = {"placed": len(hubs), "needs_review": sum("yoxlanmalıdır" in h["qa"] for h in hubs),
+                       "moved": sum(h["offset_m"] > 0 for h in hubs), "new": sum(h["action"] == "new" for h in hubs),
                        "upgrade": sum(h["action"] == "upgrade" for h in hubs), "min_spacing_m": round(min(dmin), 1),
                        "new_hubs_free_check": all(core.is_free(Point(h["x"], h["y"])) for h in hubs if h["action"] == "new")}
 log(f"{len(hubs)} hub")
@@ -203,11 +239,23 @@ lane_xy = np.array([ls.interpolate(t).coords[0] for g in lanes.geometry for ls i
                     for t in np.arange(0, ls.length, 20)])
 metro_xy = np.c_[metro.geometry.x, metro.geometry.y]
 arrival = []
+bld = masks[masks.kind == "building"]
+bld_tree = __import__("shapely").STRtree(list(bld.geometry))
 for _, s in stations.iterrows():
     x, y = s.geometry.x, s.geometry.y
     ctx = core.context(x, y)
-    dm, dp, dl = walk_to(metro_xy, x, y), walk_to(park_xy, x, y), walk_to(lane_xy, x, y)
-    parts = {"metro": lin(dm, 300, 800), "bus": min(len(ctx["bus_routes"]) / 10, 1.0),
+    # avtovağzal nöqtəsi binanın mərkəzidir; məsafələr binanın konturundakı ən yaxşı nöqtədən ölçülür
+    near = bld_tree.query(s.geometry.buffer(40))
+    if len(near):
+        fp = max((bld.geometry.iloc[j] for j in near), key=lambda g: g.area)
+        ring = fp.exterior
+        origins = [ring.interpolate(t).coords[0] for t in np.arange(0, ring.length, 15)] + [(x, y)]
+    else:
+        origins = [(x, y)]
+    dm = min(walk_to(metro_xy, ox, oy) for ox, oy in origins)
+    dp = min(walk_to(park_xy, ox, oy) for ox, oy in origins)
+    dl = min(walk_to(lane_xy, ox, oy) for ox, oy in origins)
+    parts = {"metro": lin(dm, 300, 800), "bus": min(len(ctx["bus_routes"]) / 20, 1.0),
              "parking": lin(dp, 150, 400), "lane": lin(dl, 200, 800)}
     score = 5 * (0.35 * parts["metro"] + 0.25 * parts["bus"] + 0.25 * parts["parking"] + 0.15 * parts["lane"])
     ll = gpd.GeoSeries([s.geometry], crs=UTM).to_crs(WGS84).iloc[0]
@@ -222,7 +270,7 @@ served = cells.d_park <= 400
 served_pop = float(cells["pop"][served].sum())
 trips_per_1000 = 547_758 / 30 / served_pop * 1000
 pot_trips = trips_per_1000 * float(cells["pop"][~served].sum()) / 1000
-metro_no_park = sum(1 for x, y in metro_xy if not np.isfinite(walk_to(park_xy, x, y, 400)))
+metro_no_park = sum(1 for x, y in metro_xy if not walk_to(park_xy, x, y, 400) <= 400)
 rep["city"] = {
     "pop_total": round(float(cells["pop"].sum()), -3),
     "pop_without_parking_400m": round(float(cells["pop"][~served].sum()), -3),
@@ -230,15 +278,25 @@ rep["city"] = {
     "transit_daily_without_parking_share": round(float(cells.transit[~served].sum() / cells.transit.sum()), 3),
     "metro_exits_without_parking_400m": int(metro_no_park), "metro_exits_total": len(metro),
     "trips_per_1000_served_pop_day": round(trips_per_1000, 1),
-    "gap_potential_trips_day": round(pot_trips, -2),
-    "gap_potential_co2_t_year": {k: round(co2_t(pot_trips, k)) for k in ("low", "base", "high")},
+    # YUXARI HƏDD ekstrapolyasiyası: xidmət olunan zonaların səfər intensivliyi bütün xidmətsiz əhaliyə
+    "gap_potential_upper_bound_trips_day": round(pot_trips, -2),
+    "gap_potential_upper_bound_co2_t_year": {k: round(co2_t(pot_trips, k)) for k in ("low", "base", "high")},
 }
+# fayda əyrisi: sərt tərif (400 m-də parkinq yoxdur) üzrə yeni xidmət alan sakinlər, artım kimi
+unserved_pop_total = float(cells["pop"][~served].sum())
+cum = np.cumsum([h["pop_newly_served"] for h in hubs])
+rep["program"] = {k: {"pop_newly_served": round(float(cum[k - 1]), -2),
+                      "share_of_unserved": round(float(cum[k - 1] / unserved_pop_total), 4),
+                      "trips_day_new": round(sum(h["trips_day"] for h in hubs[:k])),
+                      "co2_t_year_base": round(sum(h["co2_t_year"]["base"] for h in hubs[:k]), 1)}
+                  for k in (10, 20, 50) if k <= len(hubs)}
 top10 = hubs[:10]
-rep["top10"] = {"pop_unserved_covered": round(sum(h["pop_unserved_covered"] for h in top10), -3),
+rep["top10"] = {"pop_newly_served": round(sum(h["pop_newly_served"] for h in top10), -3),
                 "trips_day": round(sum(h["trips_day"] for h in top10)),
                 "co2_t_year": {k: round(sum(h["co2_t_year"][k] for h in top10)) for k in ("low", "base", "high")}}
 
 out = {"generated": "2026-10-18", "walk_m": HUB_WALK_M, "weights": W_DEFAULT, "curve": [round(float(v), 4) for v in curve],
+       "unserved_pop_total": round(unserved_pop_total, -3),
        "hubs": hubs, "arrival": arrival}
 (BUILD / "hubs.json").write_text(json.dumps(out, ensure_ascii=False, indent=1, default=float))
 (BUILD / "hubs_report.json").write_text(json.dumps(rep, ensure_ascii=False, indent=2, default=float))
@@ -252,6 +310,7 @@ metro.to_parquet(E / "metro.parquet"); stops.to_parquet(E / "stops.parquet")
 stations.to_parquet(E / "stations.parquet"); parks.to_parquet(E / "parks.parquet")
 masks.to_parquet(E / "masks.parquet")
 (E / "params.json").write_text(json.dumps({"K": K, "weights": W_DEFAULT, "min_spacing": MIN_SPACING,
-                                           "w_total": W_TOTAL, "walk_m": HUB_WALK_M}, indent=1))
+                                           "w_total": W_TOTAL, "walk_m": HUB_WALK_M, "route_m": ROUTE_M,
+                                           "gross_q": [round(float(v), 3) for v in GROSS_Q[:: max(1, len(GROSS_Q) // 200)]]}, indent=1))
 print(json.dumps({k: v for k, v in rep.items() if k != "arrival"}, ensure_ascii=False, indent=2, default=float))
 log("bitdi")

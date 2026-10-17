@@ -20,17 +20,26 @@ export default function App() {
 
   useEffect(() => {
     loadStatic().then(setData).catch((e) => setErr(String(e)));
-    engineAlive().then(async (ok) => {
-      set({ engineOnline: ok });
-      if (ok) {
-        try {
-          const rows: { id: string; status: string }[] = await fetch(`${ENGINE}/hubs`).then((r) => r.json());
-          set({ statuses: Object.fromEntries(rows.map((r) => [r.id, r.status])) });
-        } catch {
-          /* statuslar yalnız engine ilə */
+    // engine-in sağlamlığı dövri yoxlanılır: demo zamanı düşsə, UI ehtiyat rejiminə keçir, qalxsa qayıdır
+    let prev: boolean | null = null;
+    const check = async () => {
+      const ok = await engineAlive();
+      if (ok !== prev) {
+        prev = ok;
+        set({ engineOnline: ok });
+        if (ok) {
+          try {
+            const rows: { id: string; status: string }[] = await fetch(`${ENGINE}/hubs`).then((r) => r.json());
+            set({ statuses: Object.fromEntries(rows.map((r) => [r.id, r.status])) });
+          } catch {
+            /* statuslar yalnız engine ilə */
+          }
         }
       }
-    });
+    };
+    check();
+    const t = setInterval(check, 15000);
+    return () => clearInterval(t);
   }, [set]);
 
   useEffect(() => {
