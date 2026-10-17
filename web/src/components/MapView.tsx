@@ -1,21 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Map, { useControl, type MapRef } from "react-map-gl/maplibre";
+import MapGL, { useControl, type MapRef } from "react-map-gl/maplibre";
 import { MapboxOverlay, type MapboxOverlayProps } from "@deck.gl/mapbox";
-import { ColumnLayer, GeoJsonLayer, PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
+import { ColumnLayer, GeoJsonLayer, IconLayer, PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import { H3HexagonLayer, TripsLayer } from "@deck.gl/geo-layers";
-import type { PickingInfo } from "@deck.gl/core";
+import { AmbientLight, DirectionalLight, LightingEffect, type PickingInfo } from "@deck.gl/core";
+import type { StyleSpecification } from "maplibre-gl";
 import circle from "@turf/circle";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import { EngineOffline, post, type StaticData } from "@/lib/data";
 import { useStore } from "@/lib/store";
-import { C, GAP_STOPS, rgb, type RGBA } from "@/lib/theme";
+import { ACTION_LABEL, C, GAP_STOPS, actionColor, rgb, type RGBA } from "@/lib/theme";
 import type { H3Row, Hub, WhatIfHub } from "@/lib/types";
 import { approx } from "@/lib/format";
+import { BASEMAP_URL, BEFORE_LABELS, BEFORE_ROADS, BUILDINGS_3D, loadCaspianStyle } from "./map/basemap";
+import { icon } from "./map/symbols";
+import { declutter, square, textW, worldPx, type Box, type Candidate } from "./map/declutter";
 
-export const BASEMAP = "https://tiles.openfreemap.org/styles/fiord";
+export const BASEMAP = BASEMAP_URL;
 export const BAKU_VIEW = { longitude: 49.86, latitude: 40.405, zoom: 11.2, pitch: 0, bearing: 0 };
 let mapInstance: MapRef | null = null;
 export const getMap = () => mapInstance;
@@ -27,6 +31,8 @@ function DeckOverlay(props: MapboxOverlayProps) {
 }
 
 type Path = { path: [number, number][]; route: string; pax: number; status: string };
+type Pt = { position: [number, number]; p: Record<string, unknown> };
+type MetroStation = { position: [number, number]; name: string; pax: number; exits: number };
 
 function flattenLines(fc: GeoJSON.FeatureCollection): Path[] {
   const out: Path[] = [];
@@ -36,6 +42,16 @@ function flattenLines(fc: GeoJSON.FeatureCollection): Path[] {
     const lines = g.type === "LineString" ? [g.coordinates] : g.type === "MultiLineString" ? g.coordinates : [];
     for (const l of lines)
       out.push({ path: l as [number, number][], route: String(p.route ?? p.name ?? ""), pax: Number(p.pax ?? 0), status: String(p.pax_status ?? "") });
+  }
+  return out;
+}
+
+function points(fc: GeoJSON.FeatureCollection | undefined): Pt[] {
+  const out: Pt[] = [];
+  for (const f of fc?.features ?? []) {
+    if (f.geometry?.type !== "Point") continue;
+    const [x, y] = f.geometry.coordinates;
+    if (Number.isFinite(x) && Number.isFinite(y)) out.push({ position: [x, y], p: (f.properties ?? {}) as Record<string, unknown> });
   }
   return out;
 }
@@ -53,11 +69,64 @@ export function quantileBreaks(vals: number[], probs = HOT_PROBS): number[] {
 
 export const METRIC_IDX = { pop: 1, transit: 2, D: 3, w: 4, gap: 5 } as const;
 
+const MODE_AZ: Record<string, string> = { city_bus: "şəhər avtobusu", intercity_bus: "şəhərlərarası avtobus", suburban_bus: "şəhərətrafı avtobus", bus: "avtobus", metro: "metro", rail: "elektrik qatarı", train: "elektrik qatarı", bike: "velosiped", taxi: "taksi", ferry: "bərə" };
+
+// ADY məlumatında adlar latın transliterasiyasındadır: ekranda azərbaycanca göstərilir
+const RAIL_AZ: Record<string, string> = {
+  Baku: "Bakı", Bakikhanov: "Bakıxanov", Bilajari: "Biləcəri", Goradil: "Goradil", Keshle: "Keşlə", Khirdalan: "Xırdalan",
+  Koroghlu: "Koroğlu", Mammadli: "Məmmədli", Novkhani: "Novxanı", Pirshaghi: "Pirşağı", Sabunchu: "Sabunçu", Zabrat1: "Zabrat-1", Zabrat2: "Zabrat-2",
+};
+const railName = (p: Record<string, unknown>) => {
+  const n = String(p.name ?? "");
+  return RAIL_AZ[n] ?? n;
+};
+/** Xəritə yazısı üçün qısa ad: "Koroğlu Nəqliyyat Mübadilə Mərkəzi" → "Koroğlu NMM" */
+const officialShort = (p: Record<string, unknown>) =>
+  String(p.name ?? "")
+    .replace(/\s*Nəqliyyat\s+Mübadilə\s+(Mərkəzi|Məntəqəsi)\s*$/i, " NMM")
+    .replace(/\s*metro stansiyası\s*$/i, " NMM")
+    .trim();
+
+// 3D əkiz üçün işıqlandırma: yumşaq ətraf işığı + cənub-qərbdən axşam günəşi
+const LIGHTING = new LightingEffect({
+  ambient: new AmbientLight({ color: [235, 242, 250], intensity: 0.75 }),
+  sun: new DirectionalLight({ color: [255, 236, 210], intensity: 1.05, direction: [-1.2, -3, -4] }),
+  fill: new DirectionalLight({ color: [120, 175, 210], intensity: 0.35, direction: [2, 3, -2] }),
+});
+const NO_EFFECTS: LightingEffect[] = [];
+// 3D sütunlar üçün daha tünd, doymuş variant (işıqlandırma altında solmasın)
+const TWIN_STOPS: RGBA[] = [
+  [0, 0, 0, 0],
+  [0, 0, 0, 0],
+  [96, 34, 112, 255],
+  [128, 38, 128, 255],
+  [196, 62, 132, 255],
+  [236, 112, 146, 255],
+];
+/** interleaved rejimdə baza xəritəsinin hansı qatından əvvəl çəkiləcəyi (@deck.gl/mapbox) */
+type Before = { beforeId?: string };
+const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+const HUB_R = { S: 6, M: 7.5, L: 9.5 } as const;
+const BEACON_H = { S: 420, M: 540, L: 700 } as const;
+
 export default function MapView({ data }: { data: StaticData }) {
   const s = useStore();
   const [time, setTime] = useState(0);
   const [zoom, setZoom] = useState(BAKU_VIEW.zoom);
+  const zoomRef = useRef(BAKU_VIEW.zoom);
   const raf = useRef<number | null>(null);
+  const [style, setStyle] = useState<StyleSpecification | string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    loadCaspianStyle().then((st) => alive && setStyle(st));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const font = useMemo(() => {
+    if (typeof document === "undefined") return "Archivo, sans-serif";
+    return getComputedStyle(document.body).fontFamily || "Archivo, sans-serif";
+  }, []);
 
   // --- avtobus axını (yalnız 3D rəqəmsal əkiz): simulyasiya, real GPS deyil ---
   const routePaths = useMemo(() => flattenLines(data.routes), [data.routes]);
@@ -85,7 +154,7 @@ export default function MapView({ data }: { data: StaticData }) {
     if (s.mode !== "twin") return;
     const t0 = performance.now();
     const tick = () => {
-      setTime(((performance.now() - t0) / 1000) * 60 % loop);
+      setTime((((performance.now() - t0) / 1000) * 60) % loop);
       raf.current = requestAnimationFrame(tick);
     };
     raf.current = requestAnimationFrame(tick);
@@ -94,23 +163,52 @@ export default function MapView({ data }: { data: StaticData }) {
     };
   }, [s.mode]);
 
+  // --- nöqtə qatları ---
+  const metroExits = useMemo(() => points(data.metro), [data.metro]);
+  const metroStations = useMemo<MetroStation[]>(() => {
+    const g = new Map<string, { x: number; y: number; n: number; pax: number }>();
+    for (const e of metroExits) {
+      const k = String(e.p.station_az ?? "");
+      const a = g.get(k) ?? { x: 0, y: 0, n: 0, pax: 0 };
+      a.x += e.position[0];
+      a.y += e.position[1];
+      a.n += 1;
+      a.pax = Math.max(a.pax, Number(e.p.station_pax ?? 0));
+      g.set(k, a);
+    }
+    return [...g.entries()].map(([name, a]) => ({ position: [a.x / a.n, a.y / a.n], name, pax: a.pax, exits: a.n }));
+  }, [metroExits]);
+  const parkings = useMemo(() => points(data.parkings), [data.parkings]);
+  const stops = useMemo(() => points(data.stops), [data.stops]);
+  const official = useMemo(() => points(data.official), [data.official]);
+  const rail = useMemo(() => points(data.rail), [data.rail]);
+
   // --- H3 xanaları ---
   const mi = METRIC_IDX[s.cellMetric];
   const cells = useMemo(() => data.h3.filter((r) => (r[mi] ?? 0) > 0 && r[1] >= 1), [data.h3, mi]);
   const dMax = useMemo(() => Math.max(...data.h3.map((r) => r[3] || 0)), [data.h3]);
   const breaks = useMemo(() => FIXED_BREAKS[s.cellMetric] ?? quantileBreaks(cells.map((r) => Number(r[mi]))), [cells, mi, s.cellMetric]);
-  const colorOf = useCallback(
-    (v: number): RGBA => {
+  const classOf = useCallback(
+    (v: number) => {
       let i = 0;
       while (i < breaks.length && v > breaks[i]) i++;
-      return GAP_STOPS[i + 1] ?? GAP_STOPS[GAP_STOPS.length - 1];
+      return Math.min(i + 1, GAP_STOPS.length - 1);
     },
     [breaks],
   );
+  const twin = s.mode === "twin";
+  // 3D-də yalnız ən yüksək 30% qaldırılır: oxunaqlı relyef, şəffaf sütunlar dərinlik buferini korlamır
+  const twinMin = zoom >= 12.75 ? 4 : 3; // yaxında yalnız ən yüksək 15%
+  const twinCells = useMemo(() => (twin ? cells.filter((r) => classOf(Number(r[mi])) >= twinMin) : cells), [twin, cells, classOf, mi, twinMin]);
 
   const hubs: Hub[] = s.optimized ?? data.hubs.hubs;
+  // yuxarı sıra sonda çəkilir (üstdə görünür)
+  const hubsDraw = useMemo(() => [...hubs].sort((a, b) => b.rank - a.rank), [hubs]);
   const selRank = s.selected?.kind === "hub" ? s.selected.rank : null;
   const selKey = s.selected?.kind === "whatif" ? s.selected.key : null;
+  const selStation = s.selected?.kind === "station" ? data.hubs.arrival.find((a) => s.selected?.kind === "station" && a.id === s.selected.id) ?? null : null;
+  const selHub = selRank == null ? null : hubs.find((h) => h.rank === selRank) ?? null;
+  const selColor = selHub ? actionColor(selHub.action) : C.hub;
 
   // yenidən optimallaşdırılmış hub seçiləndə izoxron engine-dən gətirilir
   const [optIso, setOptIso] = useState<{ rank: number; geom: GeoJSON.Geometry } | null>(null);
@@ -127,71 +225,168 @@ export default function MapView({ data }: { data: StaticData }) {
     };
   }, [s.optimized, selRank, s.engineOnline]);
 
-  const onClick = useCallback(
-    async (info: PickingInfo) => {
-      const st = useStore.getState();
-      if (!st.placing || !info.coordinate) return;
-      const [lon, lat] = info.coordinate as [number, number];
-      const key = `u${Date.now()}`;
-      const offlineCircle = (msg: string) => {
-        // ehtiyat rejimi: geodezik 400 m bufer (real izoxron engine tələb edir)
-        const geom = circle([lon, lat], 0.4, { steps: 64, units: "kilometers" }).geometry;
-        const h = { key, lon, lat, isochrone: geom, offline: true } as unknown as WhatIfHub;
-        const cur = useStore.getState();
-        cur.set({ whatIf: [...cur.whatIf, h], selected: { kind: "whatif", key }, placing: false, toast: msg });
-      };
-      if (!st.engineOnline) return offlineCircle("Engine əlçatan deyil: düz xətt buferi göstərilir (real piyada izoxronu deyil)");
-      try {
-        const r = await post<WhatIfHub>("/evaluate", { lon, lat });
-        const h = { ...r, key };
-        const cur = useStore.getState();
-        cur.set({ whatIf: [...cur.whatIf, h], selected: { kind: "whatif", key }, placing: false,
-          toast: r.clicked_blocked_by.length
-            ? `Nöqtə ${r.clicked_blocked_by.map((b) => ({ road: "yolun hərəkət hissəsinə", building: "binaya", rail: "dəmir yoluna", water: "su sahəsinə" }[b] ?? b)).join(", ")} düşürdü, hub ${r.moved_m} m kənara, icazəli yerə köçürüldü`
-            : r.moved_m > 0 ? `Hub ${r.moved_m} m kənara, səki zolağına köçürüldü` : null });
-      } catch (e) {
-        if (e instanceof EngineOffline) {
-          useStore.getState().set({ engineOnline: false });
-          return offlineCircle("Engine bağlantısı kəsildi: düz xətt buferi göstərilir");
-        }
-        useStore.getState().set({ toast: (e as Error).message, placing: false });
+  const onClick = useCallback(async (info: PickingInfo) => {
+    const st = useStore.getState();
+    if (!st.placing || !info.coordinate) return;
+    const [lon, lat] = info.coordinate as [number, number];
+    const key = `u${Date.now()}`;
+    const offlineCircle = (msg: string) => {
+      // ehtiyat rejimi: geodezik 400 m bufer (real izoxron engine tələb edir)
+      const geom = circle([lon, lat], 0.4, { steps: 64, units: "kilometers" }).geometry;
+      const h = { key, lon, lat, isochrone: geom, offline: true } as unknown as WhatIfHub;
+      const cur = useStore.getState();
+      cur.set({ whatIf: [...cur.whatIf, h], selected: { kind: "whatif", key }, placing: false, toast: msg });
+    };
+    if (!st.engineOnline) return offlineCircle("Engine əlçatan deyil: düz xətt buferi göstərilir (real piyada izoxronu deyil)");
+    try {
+      const r = await post<WhatIfHub>("/evaluate", { lon, lat });
+      const h = { ...r, key };
+      const cur = useStore.getState();
+      cur.set({
+        whatIf: [...cur.whatIf, h],
+        selected: { kind: "whatif", key },
+        placing: false,
+        toast: r.clicked_blocked_by.length
+          ? `Nöqtə ${r.clicked_blocked_by.map((b) => ({ road: "yolun hərəkət hissəsinə", building: "binaya", rail: "dəmir yoluna", water: "su sahəsinə" })[b] ?? b).join(", ")} düşürdü, hub ${r.moved_m} m kənara, icazəli yerə köçürüldü`
+          : r.moved_m > 0
+            ? `Hub ${r.moved_m} m kənara, səki zolağına köçürüldü`
+            : null,
+      });
+    } catch (e) {
+      if (e instanceof EngineOffline) {
+        useStore.getState().set({ engineOnline: false });
+        return offlineCircle("Engine bağlantısı kəsildi: düz xətt buferi göstərilir");
       }
-    },
-    [],
-  );
+      useStore.getState().set({ toast: (e as Error).message, placing: false });
+    }
+  }, []);
 
-  const twin = s.mode === "twin";
   const L = s.layers;
 
+  // --- miqyasdan asılı ölçülər ---
+  const z = zoom;
+  const zf = clamp(1 + (z - 11.5) * 0.12, 0.88, 1.5); // hub ölçü əmsalı
+  const city = z < 12.5; // şəhər miqyası: ikinci dərəcəli hub-lar kiçik və rəqəmsiz
+  const hubR = (h: Hub) => HUB_R[h.type] * zf * (city && h.rank > 20 ? 0.68 : 1) + (h.rank === selRank ? 2.5 : 0);
+  // mayak sütunları: şəhər miqyasında hündür, küçə miqyasında alçaq və nazik (binaları örtməsin)
+  const beaconK = clamp(1 - (z - 13) * 0.32, 0.3, 1);
+  const beaconH = (h: Hub) => (BEACON_H[h.type] + (h.rank <= 10 ? 160 : 0)) * beaconK;
+  const routeAlpha = (twin ? 0.45 : 1) * (z < 12 ? 0.62 : z < 14 ? 0.85 : 0.7);
+  const sizeKey = `${z}|${selRank}|${twin}`;
+
+  // --- yazıların seçimi (toqquşmasız): prioritet hub > AYNA mərkəzi > avtovağzal > metro > qatar ---
+  const { shown, numbered } = useMemo(() => {
+    const P = (lon: number, lat: number) => worldPx(lon, lat, z);
+    const obstacles: Box[] = [];
+    const nums: Candidate[] = [];
+    const cands: Candidate[] = [];
+    const lab = (key: string, prio: number, x0: number, yc: number, w: number, h: number) =>
+      cands.push({ key, prio, box: { x0, y0: yc - h / 2, x1: x0 + w, y1: yc + h / 2 } });
+    for (const h of L.hubs ? hubs : []) {
+      const [x, y] = P(h.lon, h.lat);
+      const r = hubR(h);
+      obstacles.push(square(x, y, r + 2));
+      if (twin || !city || h.rank <= 20) nums.push({ key: String(h.rank), prio: 1000 - h.rank, box: square(x, y, r * 0.8) });
+      if (z >= 13 && (!twin || h.rank <= 20)) lab(`h${h.rank}`, 1000 - h.rank, x + r + 6, y, textW(h.label, 12.5, true), 16);
+    }
+    if (L.official)
+      official.forEach((d, i) => {
+        const [x, y] = P(...d.position);
+        obstacles.push(square(x, y, 10));
+        if (z >= 12) lab(`o${i}`, 500, x + 14, y, textW(officialShort(d.p), 11.5, true), 15);
+      });
+    if (L.stations)
+      for (const a of data.hubs.arrival) {
+        const [x, y] = P(a.lon, a.lat);
+        obstacles.push(square(x, y, 9));
+        if (z >= 12) lab(`t${a.id}`, 450, x + 13, y, textW(a.name, 11.5, true), 15);
+      }
+    if (L.metro && z >= 12.75)
+      for (const m of metroStations) {
+        const [x, y] = P(...m.position);
+        const w = textW(m.name, 11, true);
+        if (z < 14) lab(`m${m.name}`, 200 + Math.min(100, m.pax / 1000), x + 10, y, w, 14);
+        else lab(`m${m.name}`, 200 + Math.min(100, m.pax / 1000), x - w / 2, y - 16, w, 14);
+      }
+    if (L.rail && z >= 13)
+      rail.forEach((d, i) => {
+        const [x, y] = P(...d.position);
+        lab(`r${i}`, 100, x + 12, y, textW(railName(d.p), 10.5, true), 14);
+      });
+    // öz nişanı maneə sayılmasın deyə yazılar nişanın kənarından başlayır; hub dairələri maneədir
+    return { shown: declutter(cands, obstacles), numbered: new Set([...declutter(nums)].map(Number)) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [z, hubs, selRank, twin, L.hubs, L.official, L.stations, L.metro, L.rail, official, rail, metroStations, data.hubs.arrival]);
+
+  const label = {
+    fontFamily: font,
+    fontWeight: 600,
+    characterSet: "auto" as const,
+    fontSettings: { sdf: true, fontSize: 64, buffer: 8, radius: 10 },
+    outlineWidth: 4,
+    outlineColor: rgb(C.bg, 235),
+    getTextAnchor: "start" as const,
+    getAlignmentBaseline: "center" as const,
+    billboard: true,
+  };
+
   const layers = [
+    // 1) istilik xəritəsi: yolların və yazıların altında
     L.cells &&
-      (twin || zoom < 14.5) &&
-      new H3HexagonLayer<H3Row>({
+      z < 14.5 &&
+      new H3HexagonLayer<H3Row, Before>({
         id: "cells",
-        data: cells,
+        data: twin ? twinCells : cells,
+        beforeId: twin ? undefined : BEFORE_ROADS,
         getHexagon: (r) => r[0],
-        getFillColor: (r) => colorOf(Number(r[mi])),
+        getFillColor: (r): RGBA => {
+          const c = GAP_STOPS[classOf(Number(r[mi]))];
+          return twin ? TWIN_STOPS[classOf(Number(r[mi]))] : c;
+        },
         extruded: twin,
-        getElevation: (r) => Math.sqrt(Math.max(0, r[3]) / dMax) * 520,
-        elevationScale: 1,
-        coverage: twin ? 0.86 : 1,
+        getElevation: (r) => 25 + Math.sqrt(Math.max(0, r[3]) / dMax) * 320,
+        // yaxınlaşdıqca relyef alçalır: binalar və avtobus axını görünür qalır
+        elevationScale: twin ? clamp(1 - (z - 12) * 0.5, 0.22, 1) : 1,
+        coverage: twin ? 0.78 : 1,
         stroked: false,
         pickable: true,
-        opacity: twin ? 0.55 : 0.75,
-        material: { ambient: 0.55, diffuse: 0.6, shininess: 20 },
-        updateTriggers: { getFillColor: [mi, breaks] },
+        autoHighlight: !twin,
+        highlightColor: [255, 255, 255, 45],
+        opacity: twin ? clamp(0.9 - (z - 12) * 0.22, 0.5, 0.9) : clamp(0.92 - (z - 12) * 0.4, 0.34, 0.92), // yaxınlaşdıqca küçə konteksti önə çıxır
+        material: { ambient: 0.6, diffuse: 0.55, shininess: 12, specularColor: [30, 34, 40] },
+        updateTriggers: { getFillColor: [mi, breaks, twin] },
       }),
+    // 2) xətlər: yazıların altında
     L.routes &&
-      new PathLayer<Path>({
+      new PathLayer<Path, Before>({
         id: "routes",
         data: routePaths,
+        beforeId: BEFORE_LABELS,
         getPath: (d) => d.path,
-        getColor: (d) => rgb(C.bus, d.status === "measured" ? (twin ? 60 : 105) : twin ? 30 : 50),
-        getWidth: (d) => 0.5 + Math.sqrt(d.pax) / 75,
+        getColor: (d) => rgb(C.bus, Math.round((d.status === "measured" ? 120 : 62) * routeAlpha)),
+        getWidth: (d) => (0.5 + Math.sqrt(d.pax) / 80) * (z < 12 ? 0.8 : 1),
         widthUnits: "pixels",
         capRounded: true,
         jointRounded: true,
         pickable: !twin,
+        autoHighlight: !twin,
+        highlightColor: rgb("#8CC4F2", 230),
+        updateTriggers: { getColor: [routeAlpha], getWidth: [z < 12] },
+      }),
+    L.lanes &&
+      new GeoJsonLayer<Record<string, unknown>, Before>({
+        id: "lanes",
+        data: data.lanes,
+        beforeId: BEFORE_LABELS,
+        getLineColor: rgb(C.bike, 235),
+        getLineWidth: z < 12 ? 1.8 : z < 14 ? 2.4 : 3,
+        lineWidthUnits: "pixels",
+        lineCapRounded: true,
+        lineJointRounded: true,
+        pickable: true,
+        autoHighlight: true,
+        highlightColor: rgb(C.mpv, 255),
+        updateTriggers: { getLineWidth: z },
       }),
     twin &&
       L.routes &&
@@ -200,148 +395,305 @@ export default function MapView({ data }: { data: StaticData }) {
         data: trips,
         getPath: (d: (typeof trips)[number]) => d.path,
         getTimestamps: (d: (typeof trips)[number]) => d.ts,
-        getColor: rgb("#9FD3FF"),
-        getWidth: 3,
+        getColor: rgb("#BDE5FF"),
+        getWidth: z >= 14 ? 4 : 3,
         widthUnits: "pixels",
-        trailLength: 120,
+        trailLength: 160,
+        fadeTrail: true,
         currentTime: time,
         capRounded: true,
         jointRounded: true,
       }),
-    L.lanes &&
-      new GeoJsonLayer({
-        id: "lanes",
-        data: data.lanes,
-        getLineColor: rgb(C.bike, 230),
-        getLineWidth: 2.6,
-        lineWidthUnits: "pixels",
-        lineCapRounded: true,
-        pickable: true,
-      }),
-    L.parkings &&
-      new ScatterplotLayer({
-        id: "parkings",
-        data: data.parkings.features,
-        getPosition: (f: GeoJSON.Feature) => (f.geometry as GeoJSON.Point).coordinates as [number, number],
-        getFillColor: (f: GeoJSON.Feature) => (f.properties?.ptype === "MPV" ? rgb("#9BE3B8", 255) : rgb(C.bike, 210)),
-        getRadius: 2.6,
-        radiusUnits: "pixels",
-        radiusMinPixels: 1.5,
-        pickable: true,
-      }),
-    L.stops &&
-      new ScatterplotLayer({
-        id: "stops",
-        data: data.stops.features,
-        getPosition: (f: GeoJSON.Feature) => (f.geometry as GeoJSON.Point).coordinates as [number, number],
-        getFillColor: rgb(C.bus, 220),
-        getRadius: 2,
-        radiusUnits: "pixels",
-        pickable: true,
-      }),
-    L.metro &&
-      new ScatterplotLayer({
-        id: "metro",
-        data: data.metro.features,
-        getPosition: (f: GeoJSON.Feature) => (f.geometry as GeoJSON.Point).coordinates as [number, number],
-        getFillColor: rgb(C.metro),
-        getLineColor: rgb("#FFFFFF", 230),
-        stroked: true,
-        lineWidthMinPixels: 1,
-        getRadius: 4,
-        radiusUnits: "pixels",
-        pickable: true,
-      }),
-    L.stations &&
-      new ScatterplotLayer({
-        id: "stations",
-        data: data.hubs.arrival,
-        getPosition: (a) => [a.lon, a.lat],
-        getFillColor: rgb(C.station),
-        getLineColor: rgb(C.bg),
-        stroked: true,
-        lineWidthMinPixels: 2,
-        getRadius: 8,
-        radiusUnits: "pixels",
-        pickable: true,
-      }),
     L.isochrones &&
-      new GeoJsonLayer({
+      new GeoJsonLayer<Record<string, unknown>, Before>({
         id: "isochrones",
-        data: selRank == null
-          ? { type: "FeatureCollection", features: [] }
-          : s.optimized
-            ? { type: "FeatureCollection", features: optIso && optIso.rank === selRank ? [{ type: "Feature", geometry: optIso.geom, properties: { rank: selRank } }] : [] }
-            : { type: "FeatureCollection", features: data.isochrones.features.filter((f) => f.properties?.rank === selRank) },
-        getFillColor: (f: GeoJSON.Feature) => rgb(C.hub, f.properties?.rank === selRank ? 70 : 22),
-        getLineColor: (f: GeoJSON.Feature) => rgb(C.hub, f.properties?.rank === selRank ? 255 : 110),
-        getLineWidth: (f: GeoJSON.Feature) => (f.properties?.rank === selRank ? 2.2 : 0.8),
+        beforeId: twin ? undefined : BEFORE_LABELS,
+        data:
+          selRank == null
+            ? { type: "FeatureCollection", features: [] }
+            : s.optimized
+              ? { type: "FeatureCollection", features: optIso && optIso.rank === selRank ? [{ type: "Feature", geometry: optIso.geom, properties: { rank: selRank } }] : [] }
+              : { type: "FeatureCollection", features: data.isochrones.features.filter((f) => f.properties?.rank === selRank) },
+        getFillColor: rgb(selColor, 46),
+        getLineColor: rgb(selColor, 255),
+        getLineWidth: 2.2,
         lineWidthUnits: "pixels",
-        updateTriggers: { getFillColor: selRank, getLineColor: selRank, getLineWidth: selRank },
+        lineJointRounded: true,
+        updateTriggers: { getFillColor: selColor, getLineColor: selColor },
       }),
     new GeoJsonLayer({
       id: "whatif-iso",
       data: { type: "FeatureCollection", features: s.whatIf.map((h) => ({ type: "Feature", geometry: h.isochrone, properties: { key: h.key } })) } as GeoJSON.FeatureCollection,
-      getFillColor: (f: GeoJSON.Feature) => rgb("#FFFFFF", f.properties?.key === selKey ? 50 : 20),
+      getFillColor: (f: GeoJSON.Feature) => rgb("#FFFFFF", f.properties?.key === selKey ? 46 : 18),
       getLineColor: rgb("#FFFFFF", 220),
       getLineWidth: 1.6,
       lineWidthUnits: "pixels",
       updateTriggers: { getFillColor: selKey },
     }),
+    // 3) kontekst nöqtələri: parkinqlər və dayanacaqlar (sakit)
+    L.parkings &&
+      new ScatterplotLayer<Pt>({
+        id: "parkings",
+        data: parkings,
+        getPosition: (d) => d.position,
+        getFillColor: (d) => (d.p.ptype === "MPV" ? rgb(C.mpv, z < 12 ? 200 : 240) : rgb(C.mps, z < 12 ? 190 : 235)),
+        getLineColor: rgb(C.bg, 220),
+        stroked: z >= 13.5,
+        lineWidthUnits: "pixels",
+        getLineWidth: 1,
+        getRadius: 11,
+        radiusUnits: "meters",
+        radiusMinPixels: 1.3,
+        radiusMaxPixels: 4.5,
+        pickable: true,
+        autoHighlight: true,
+        highlightColor: [255, 255, 255, 200],
+        updateTriggers: { getFillColor: z < 12 },
+      }),
+    L.stops &&
+      new ScatterplotLayer<Pt>({
+        id: "stops",
+        data: stops,
+        getPosition: (d) => d.position,
+        getFillColor: rgb(C.bus, 230),
+        getLineColor: rgb(C.bg, 220),
+        stroked: z >= 13.5,
+        lineWidthUnits: "pixels",
+        getLineWidth: 1,
+        getRadius: 10,
+        radiusUnits: "meters",
+        radiusMinPixels: 1.2,
+        radiusMaxPixels: 3.8,
+        pickable: true,
+        autoHighlight: true,
+        highlightColor: [255, 255, 255, 200],
+      }),
+    // 4) mövcud nəqliyyat infrastrukturu: metro, elektrik qatarı, avtovağzal, AYNA mərkəzləri
+    L.rail &&
+      new IconLayer<Pt>({
+        id: "rail",
+        data: rail,
+        getPosition: (d) => d.position,
+        getIcon: () => icon("rail"),
+        getSize: z < 12 ? 13 : z < 14 ? 16 : 19,
+        sizeUnits: "pixels",
+        pickable: true,
+        autoHighlight: true,
+        highlightColor: [255, 255, 255, 90],
+        updateTriggers: { getSize: z },
+      }),
+    L.metro &&
+      new IconLayer<Pt | MetroStation>({
+        id: "metro",
+        data: z < 14 ? metroStations : metroExits,
+        getPosition: (d) => d.position,
+        getIcon: () => icon("metro"),
+        getSize: z < 12 ? 13 : z < 14 ? 16 : 15,
+        sizeUnits: "pixels",
+        pickable: true,
+        autoHighlight: true,
+        highlightColor: [255, 255, 255, 90],
+        updateTriggers: { getSize: z },
+      }),
+    L.stations &&
+      selStation &&
+      new ScatterplotLayer({
+        id: "station-sel",
+        data: [selStation],
+        getPosition: (a) => [a.lon, a.lat],
+        getFillColor: rgb(C.station, 50),
+        getLineColor: rgb("#FFFFFF", 240),
+        stroked: true,
+        lineWidthUnits: "pixels",
+        getLineWidth: 2,
+        getRadius: 19,
+        radiusUnits: "pixels",
+      }),
+    L.stations &&
+      new IconLayer({
+        id: "stations",
+        data: data.hubs.arrival,
+        getPosition: (a) => [a.lon, a.lat],
+        getIcon: () => icon("terminal"),
+        getSize: z < 12 ? 18 : 22,
+        sizeUnits: "pixels",
+        pickable: true,
+        autoHighlight: true,
+        highlightColor: [255, 255, 255, 90],
+        updateTriggers: { getSize: z },
+      }),
+    L.official &&
+      new IconLayer<Pt>({
+        id: "official",
+        data: official,
+        getPosition: (d) => d.position,
+        getIcon: () => icon("official"),
+        getSize: z < 12 ? 19 : z < 14 ? 23 : 26,
+        sizeUnits: "pixels",
+        pickable: true,
+        autoHighlight: true,
+        highlightColor: [255, 255, 255, 90],
+        updateTriggers: { getSize: z },
+      }),
+    // infrastruktur adları (toqquşma filtri ilə)
+    L.official &&
+      z >= 12 &&
+      new TextLayer<Pt>({
+        ...label,
+        id: "official-label",
+        data: official.filter((_, i) => shown.has(`o${i}`)),
+        getPosition: (d) => d.position,
+        getText: (d) => officialShort(d.p),
+        getSize: 11.5,
+        getColor: rgb(C.official, 255),
+        getPixelOffset: [15, 0],
+      }),
+    L.stations &&
+      z >= 12 &&
+      new TextLayer<StaticData["hubs"]["arrival"][number]>({
+        ...label,
+        id: "stations-label",
+        data: data.hubs.arrival.filter((a) => shown.has(`t${a.id}`)),
+        getPosition: (a) => [a.lon, a.lat],
+        getText: (a) => a.name,
+        getSize: 11.5,
+        getColor: rgb(C.station, 255),
+        getPixelOffset: [14, 0],
+      }),
+    L.metro &&
+      z >= 12.75 &&
+      new TextLayer<MetroStation>({
+        ...label,
+        id: "metro-label",
+        data: metroStations.filter((d) => shown.has(`m${d.name}`)),
+        getPosition: (d) => d.position,
+        getText: (d) => d.name,
+        getSize: 11,
+        getColor: rgb("#F2A7A2", 255),
+        getPixelOffset: z < 14 ? [11, 0] : [0, -16],
+        getTextAnchor: z < 14 ? "start" : "middle",
+        updateTriggers: { getPixelOffset: z < 14, getTextAnchor: z < 14 },
+      }),
+    L.rail &&
+      z >= 13 &&
+      new TextLayer<Pt>({
+        ...label,
+        id: "rail-label",
+        data: rail.filter((_, i) => shown.has(`r${i}`)),
+        getPosition: (d) => d.position,
+        getText: (d) => railName(d.p),
+        getSize: 10.5,
+        getColor: rgb(C.rail, 255),
+        getPixelOffset: [12, 0],
+      }),
+    // 5) təklif olunan hub-lar: ən üst ierarxiya
+    L.hubs &&
+      selHub &&
+      new ScatterplotLayer<Hub>({
+        id: "hub-sel-halo",
+        data: [selHub],
+        getPosition: (h) => [h.lon, h.lat, twin ? beaconH(h) : 0],
+        getFillColor: rgb(selColor, 60),
+        getLineColor: rgb("#FFFFFF", 240),
+        stroked: true,
+        lineWidthUnits: "pixels",
+        getLineWidth: 2,
+        getRadius: (h) => hubR(h) + 7,
+        radiusUnits: "pixels",
+        billboard: true,
+        updateTriggers: { getRadius: sizeKey, getPosition: [twin, beaconK] },
+      }),
+    L.hubs &&
+      new ScatterplotLayer<Hub>({
+        id: "hub-casing",
+        data: hubsDraw,
+        getPosition: (h) => [h.lon, h.lat],
+        getFillColor: rgb(C.bg, 210),
+        getRadius: (h) => hubR(h) + 3.2,
+        radiusUnits: "pixels",
+        updateTriggers: { getRadius: sizeKey },
+      }),
     L.hubs &&
       new ScatterplotLayer<Hub>({
         id: "hubs",
-        data: hubs,
+        data: hubsDraw,
         getPosition: (h) => [h.lon, h.lat],
-        getFillColor: (h) => rgb(h.action === "new" ? C.hub : C.upgrade),
-        getLineColor: (h) => (h.rank === selRank ? rgb("#FFFFFF") : rgb(C.bg)),
+        getFillColor: (h) => (h.rank === selRank ? rgb(actionColor(h.action)) : rgb(C.bg, 255)),
+        getLineColor: (h) => rgb(actionColor(h.action)),
         stroked: true,
-        lineWidthMinPixels: 2,
-        getRadius: (h) => ({ S: 6, M: 8, L: 11 })[h.type] + (h.rank === selRank ? 3 : 0),
+        lineWidthUnits: "pixels",
+        getLineWidth: (h) => (city && h.rank > 20 ? 2.2 : 3),
+        getRadius: (h) => hubR(h),
         radiusUnits: "pixels",
         pickable: true,
-        updateTriggers: { getLineColor: selRank, getRadius: selRank },
+        autoHighlight: true,
+        highlightColor: [255, 255, 255, 80],
+        updateTriggers: { getFillColor: selRank, getRadius: sizeKey, getLineWidth: city },
       }),
     twin &&
       L.hubs &&
       new ColumnLayer<Hub>({
         id: "hub-beacons",
-        data: hubs,
-        diskResolution: 12,
-        radius: 45,
+        data: hubsDraw,
+        diskResolution: 16,
+        radius: z >= 14.5 ? 9 : z >= 13.5 ? 16 : 30,
         extruded: true,
         getPosition: (h) => [h.lon, h.lat],
-        getElevation: (h) => 650 + (h.rank <= 10 ? 250 : 0),
-        getFillColor: (h) => rgb(h.action === "new" ? C.hub : C.upgrade, h.rank === selRank ? 255 : 220),
-        material: { ambient: 0.8, diffuse: 0.5 },
+        getElevation: (h) => beaconH(h),
+        getFillColor: (h) => rgb(actionColor(h.action), h.rank === selRank ? 255 : 235),
+        material: { ambient: 0.9, diffuse: 0.45, shininess: 40, specularColor: [255, 240, 220] },
         pickable: true,
-        updateTriggers: { getFillColor: selRank },
+        autoHighlight: true,
+        highlightColor: [255, 255, 255, 120],
+        updateTriggers: { getFillColor: selRank, getElevation: beaconK },
       }),
     L.hubs &&
       new TextLayer<Hub>({
         id: "hub-rank",
-        data: hubs.filter((h) => h.rank <= 20),
-        getPosition: (h) => [h.lon, h.lat],
+        data: hubsDraw.filter((h) => numbered.has(h.rank)),
+        getPosition: (h) => [h.lon, h.lat, twin ? beaconH(h) + 70 : 0],
         getText: (h) => String(h.rank),
-        getSize: 11,
-        getColor: rgb(C.bg),
-        fontFamily: "Archivo, sans-serif",
+        getSize: (h) => (h.type === "L" ? 12 : 11) * Math.min(zf, 1.25),
+        getColor: (h) => (h.rank === selRank ? rgb(C.bg) : rgb("#FFFFFF")),
+        fontFamily: font,
         fontWeight: 700,
+        fontSettings: { sdf: true, fontSize: 64, buffer: 6 },
+        outlineWidth: twin ? 4 : 0,
+        outlineColor: rgb(C.bg, 255),
         getTextAnchor: "middle",
         getAlignmentBaseline: "center",
         billboard: true,
+        updateTriggers: { getColor: selRank, getSize: sizeKey, getPosition: [twin, beaconK] },
+      }),
+    L.hubs &&
+      z >= 13 &&
+      new TextLayer<Hub>({
+        ...label,
+        id: "hub-label",
+        data: hubsDraw.filter((h) => shown.has(`h${h.rank}`)),
+        getPosition: (h) => [h.lon, h.lat, twin ? beaconH(h) + 70 : 0],
+        getText: (h) => h.label,
+        getSize: 12.5,
+        fontWeight: 700,
+        getColor: (h) => rgb(actionColor(h.action), 255),
+        getPixelOffset: (h) => [twin ? 14 : hubR(h) + 7, 0],
+        updateTriggers: { getPixelOffset: sizeKey, getPosition: [twin, beaconK] },
       }),
     new ScatterplotLayer<WhatIfHub>({
       id: "whatif",
       data: s.whatIf,
       getPosition: (h) => [h.lon, h.lat],
-      getFillColor: rgb("#FFFFFF"),
-      getLineColor: rgb(C.hub),
+      getFillColor: (h) => (h.key === selKey ? rgb("#FFFFFF") : rgb("#FFFFFF", 225)),
+      getLineColor: rgb(C.bg),
       stroked: true,
-      lineWidthMinPixels: 3,
-      getRadius: 9,
+      lineWidthUnits: "pixels",
+      getLineWidth: 3,
+      getRadius: (h) => (h.key === selKey ? 10 : 8),
       radiusUnits: "pixels",
       pickable: true,
+      autoHighlight: true,
+      highlightColor: rgb(C.hub, 160),
+      updateTriggers: { getFillColor: selKey, getRadius: selKey },
     }),
   ].filter(Boolean);
 
@@ -353,71 +705,106 @@ export default function MapView({ data }: { data: StaticData }) {
     else if (info.layer?.id === "stations" && info.object) st.set({ selected: { kind: "station", id: (info.object as { id: string }).id } });
   }, []);
 
-  const getTooltip = useCallback(
-    (info: PickingInfo) => {
-      const o = info.object as Record<string, unknown> | undefined;
-      if (!o) return null;
-      const p = ((o as { properties?: Record<string, unknown> }).properties ?? o) as Record<string, unknown>;
-      const style = { background: C.surface, color: C.text, fontFamily: "Archivo, sans-serif", fontSize: "12px", borderRadius: "6px", padding: "8px 10px", border: `1px solid ${C.line}` };
-      const id = info.layer?.id;
-      if (id === "cells") {
-        const r = o as unknown as H3Row;
-        return { html: `<b>H3 xana</b><br/>Əhali: ~${Math.round(r[1])}<br/>Nəqliyyat minikləri: ~${Math.round(r[2])}/gün<br/>Boşluq: ${r[5] == null ? "—" : Math.round(r[5] * 100) + "%"}<br/>Ən yaxın parkinq: ${r[6] == null ? "> 400 m" : Math.round(r[6]) + " m"}`, style };
+  const getTooltip = useCallback((info: PickingInfo) => {
+    const o = info.object as Record<string, unknown> | undefined;
+    if (!o) return null;
+    const p = ((o as { p?: Record<string, unknown>; properties?: Record<string, unknown> }).p ??
+      (o as { properties?: Record<string, unknown> }).properties ??
+      o) as Record<string, unknown>;
+    const style = {
+      background: C.surface,
+      color: C.text,
+      fontFamily: "var(--font-archivo), Archivo, sans-serif",
+      fontSize: "12px",
+      lineHeight: "1.45",
+      borderRadius: "6px",
+      padding: "8px 10px",
+      border: `1px solid ${C.line}`,
+      boxShadow: "0 6px 18px rgba(0,0,0,.35)",
+      maxWidth: "280px",
+    };
+    const head = (color: string, kicker: string, title: string) =>
+      `<div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:${color};margin-bottom:2px">${kicker}</div><div style="font-weight:700;font-size:13px">${title}</div>`;
+    const sub = (t: string) => `<div style="color:${C.muted}">${t}</div>`;
+    const id = info.layer?.id;
+    if (id === "cells") {
+      const r = o as unknown as H3Row;
+      return {
+        html: `${head("#F79CB4", "H3 xana (~0,1 km²)", `Əhali: ~${Math.round(r[1])}`)}${sub(`Nəqliyyat minikləri: ~${Math.round(r[2])}/gün`)}${sub(`Boşluq: ${r[5] == null ? "—" : Math.round(r[5] * 100) + "%"}`)}${sub(`Ən yaxın parkinq: ${r[6] == null ? "> 400 m" : Math.round(r[6]) + " m"}`)}`,
+        style,
+      };
+    }
+    if (id === "routes") {
+      const d = o as unknown as Path;
+      return {
+        html: `${head(C.bus, "Avtobus marşrutu", `№ ${d.route}`)}${sub(`~${Math.round(d.pax / 100) * 100} sərnişin/gün`)}${sub(d.status === "measured" ? "ölçülmüş (BakuBus)" : "proqnoz (model + AYNA cəminə kalibr)")}`,
+        style,
+      };
+    }
+    if (id === "metro") {
+      if ("exits" in o) {
+        const m = o as unknown as MetroStation;
+        return { html: `${head(C.metro, "Metro stansiyası", `${m.name} m/st.`)}${sub(`${m.exits} çıxış · ${approx(m.pax)} sərnişin/gün (ölçülmüş)`)}`, style };
       }
-      if (id === "routes") {
-        const d = o as unknown as Path;
-        return { html: `<b>Marşrut ${d.route}</b><br/>~${Math.round(d.pax / 100) * 100} sərnişin/gün<br/>${d.status === "measured" ? "🟢 ölçülmüş (BakuBus)" : "🟡 proqnoz (model + AYNA cəminə kalibr)"}`, style };
-      }
-      if (id === "metro") return { html: `<b>${p.station_az} m/st.</b><br/>${p.exit}, ${p.address}<br/>Stansiya: ${approx(Number(p.station_pax))} sərnişin/gün 🟢`, style };
-      if (id === "parkings") return { html: `<b>${p.name || "Parkinq"}</b><br/>${p.ptype === "MPV" ? "MPV (AYNA «yeni velosiped məntəqələri» qovluğu)" : "MPS (AYNA ümumi siyahısı)"}`, style };
-      if (id === "stops") return { html: `<b>${p.name || "Dayanacaq"}</b><br/>${p.n_routes} marşrut · ~${p.boardings} minik/gün`, style };
-      if (id === "lanes") return { html: `<b>Velo-zolaq</b><br/>${p.name ?? ""}<br/>${p.length_km} km`, style };
-      if (id === "hubs" || id === "hub-beacons") {
-        const h = o as unknown as Hub;
-        return { html: `<b>#${h.rank} ${h.label}</b><br/>${h.action === "new" ? "Yeni hub" : "Hub-a çevrilmə"} · tip ${h.type}`, style };
-      }
-      if (id === "stations") return { html: `<b>${p.name}</b><br/>Gəliş balı: ${p.score}/5`, style };
-      return null;
-    },
-    [],
-  );
+      return { html: `${head(C.metro, "Metro çıxışı", `${p.station_az} m/st.`)}${sub(`${p.exit}, ${p.address}`)}${sub(`Stansiya: ${approx(Number(p.station_pax))} sərnişin/gün (ölçülmüş)`)}`, style };
+    }
+    if (id === "parkings")
+      return { html: `${head(p.ptype === "MPV" ? C.mpv : C.mps, p.ptype === "MPV" ? "MPV velosiped məntəqəsi" : "MPS parkinqi", String(p.name || "Parkinq"))}${sub(p.ptype === "MPV" ? "AYNA «yeni velosiped məntəqələri» qovluğu" : "AYNA ümumi siyahısı")}`, style };
+    if (id === "stops") return { html: `${head(C.bus, "Avtobus dayanacağı", String(p.name || "Dayanacaq"))}${sub(`${p.n_routes} marşrut · ~${p.boardings} minik/gün`)}`, style };
+    if (id === "lanes") return { html: `${head(C.bike, "Velo-zolaq", String(p.name ?? ""))}${sub(`${p.length_km} km`)}`, style };
+    if (id === "hubs" || id === "hub-beacons") {
+      const h = o as unknown as Hub;
+      const col = actionColor(h.action);
+      const off = h.action === "integrate" && h.official_hub ? sub(`Mərkəz: ${h.official_hub}`) : "";
+      return { html: `${head(col, `Təklif olunan hub · #${h.rank}`, h.label)}${sub(`${ACTION_LABEL[h.action] ?? h.action} · tip ${h.type}, ${h.docks} yer`)}${off}`, style };
+    }
+    if (id === "stations") return { html: `${head(C.station, "Avtovağzal", String(p.name))}${sub(`Gəliş balı: ${p.score}/5`)}`, style };
+    if (id === "official") {
+      const modes = Array.isArray(p.modes) ? (p.modes as string[]).map((m) => MODE_AZ[m] ?? m).join(", ") : "";
+      return {
+        html: `${head(C.official, "AYNA mübadilə mərkəzi", String(p.name ?? ""))}${sub(`${p.n_routes ?? "—"} marşrut · ${p.n_stops ?? "—"} dayanacaq`)}${modes ? sub(modes) : ""}`,
+        style,
+      };
+    }
+    if (id === "rail") return { html: `${head(C.rail, "Elektrik qatarı stansiyası (ADY)", railName(p))}${p.n_routes != null ? sub(`Marşrut sayı: ${p.n_routes}`) : ""}`, style };
+    if (id === "whatif") return { html: `${head("#FFFFFF", "Sizin hub", "Yoxlanılan nöqtə")}`, style };
+    return null;
+  }, []);
+
+  if (!style) return <div className="absolute inset-0 bg-[var(--bg)]" aria-hidden />;
 
   return (
-    <Map
+    <MapGL
       ref={(r) => {
         mapInstance = r;
         if (typeof window !== "undefined") (window as unknown as { __ayanMap?: MapRef | null }).__ayanMap = r;
       }}
       initialViewState={BAKU_VIEW}
-      mapStyle={BASEMAP}
+      mapStyle={style}
       maxPitch={70}
-      style={{ position: "absolute", inset: 0 }}
+      style={{ position: "absolute", inset: 0, background: C.bg }}
       cursor={s.placing ? "crosshair" : "grab"}
       attributionControl={{ compact: true }}
       onMove={(e) => {
-        const z = e.viewState.zoom;
-        if ((z >= 14.5) !== (zoom >= 14.5)) setZoom(z);
+        const zb = Math.round(e.viewState.zoom * 4) / 4;
+        if (zb !== zoomRef.current) {
+          zoomRef.current = zb;
+          setZoom(zb);
+        }
       }}
       onLoad={(e) => {
         const m = e.target;
-        if (!m.getLayer("ayan-buildings-3d"))
-          m.addLayer({
-            id: "ayan-buildings-3d",
-            type: "fill-extrusion",
-            source: "openmaptiles",
-            "source-layer": "building",
-            minzoom: 13,
-            layout: { visibility: "none" },
-            paint: {
-              "fill-extrusion-color": "#2B5568",
-              "fill-extrusion-height": ["coalesce", ["get", "render_height"], 9],
-              "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
-              "fill-extrusion-opacity": 0.75,
-            },
-          });
+        if (!m.getLayer(BUILDINGS_3D.id)) m.addLayer(BUILDINGS_3D, m.getLayer(BEFORE_LABELS) ? BEFORE_LABELS : undefined);
+        if (useStore.getState().mode === "twin") m.setLayoutProperty(BUILDINGS_3D.id, "visibility", "visible");
       }}
     >
-      <DeckOverlay interleaved layers={layers} onClick={(i) => (useStore.getState().placing ? onClick(i) : onPick(i))} getTooltip={getTooltip} />
-    </Map>
+      <DeckOverlay
+        interleaved
+        layers={layers}
+        effects={twin ? [LIGHTING] : NO_EFFECTS}
+        onClick={(i) => (useStore.getState().placing ? onClick(i) : onPick(i))}
+        getTooltip={getTooltip}
+      />
+    </MapGL>
   );
 }

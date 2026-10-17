@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { CellMetric, Hub, Mode, Panel, WhatIfHub } from "./types";
 
-export type LayerKey = "cells" | "routes" | "metro" | "stops" | "stations" | "parkings" | "lanes" | "hubs" | "isochrones";
+export type LayerKey = "cells" | "routes" | "metro" | "stops" | "stations" | "parkings" | "lanes" | "hubs" | "isochrones" | "official" | "rail";
 
 interface S {
   mode: Mode;
@@ -24,7 +24,7 @@ interface S {
 export const useStore = create<S>((set) => ({
   mode: "plan",
   panel: "map",
-  layers: { cells: true, routes: true, metro: true, stops: false, stations: true, parkings: true, lanes: true, hubs: true, isochrones: true },
+  layers: { cells: true, routes: true, metro: true, stops: false, stations: true, parkings: true, lanes: true, hubs: true, isochrones: true, official: true, rail: true },
   cellMetric: "w",
   selected: null,
   placing: false,

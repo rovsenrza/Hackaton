@@ -8,6 +8,17 @@ async function j<T>(path: string): Promise<T> {
   return r.json();
 }
 
+const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+/** İstəyə bağlı qat: fayl yoxdursa və ya pozulubsa boş kolleksiya (tətbiq heç vaxt sınmır) */
+async function opt(path: string): Promise<GeoJSON.FeatureCollection> {
+  try {
+    const d = await j<GeoJSON.FeatureCollection>(path);
+    return d && Array.isArray(d.features) ? d : EMPTY_FC;
+  } catch {
+    return EMPTY_FC;
+  }
+}
+
 export interface StaticData {
   hubs: HubsFile;
   h3: H3Row[];
@@ -19,10 +30,14 @@ export interface StaticData {
   stops: GeoJSON.FeatureCollection;
   isochrones: GeoJSON.FeatureCollection;
   metrics: Metrics;
+  /** AYNA-nın mövcud nəqliyyat mübadilə mərkəzləri (istəyə bağlı) */
+  official: GeoJSON.FeatureCollection;
+  /** ADY elektrik qatarı stansiyaları (istəyə bağlı) */
+  rail: GeoJSON.FeatureCollection;
 }
 
 export async function loadStatic(): Promise<StaticData> {
-  const [hubs, h3, routes, metro, stations, parkings, lanes, stops, isochrones, metrics] = await Promise.all([
+  const [hubs, h3, routes, metro, stations, parkings, lanes, stops, isochrones, metrics, official, rail] = await Promise.all([
     j<HubsFile>("/data/hubs.json"),
     j<{ rows: H3Row[] }>("/data/h3_r9.json").then((d) => d.rows),
     j<GeoJSON.FeatureCollection>("/data/bus_routes.geojson"),
@@ -33,8 +48,10 @@ export async function loadStatic(): Promise<StaticData> {
     j<GeoJSON.FeatureCollection>("/data/bus_stops.geojson"),
     j<GeoJSON.FeatureCollection>("/data/isochrones.geojson"),
     j<Metrics>("/data/metrics.json"),
+    opt("/data/official_hubs.geojson"),
+    opt("/data/rail_stations.geojson"),
   ]);
-  return { hubs, h3, routes, metro, stations, parkings, lanes, stops, isochrones, metrics };
+  return { hubs, h3, routes, metro, stations, parkings, lanes, stops, isochrones, metrics, official, rail };
 }
 
 /** Engine əlçatandırmı? (ehtiyat rejimi üçün) */

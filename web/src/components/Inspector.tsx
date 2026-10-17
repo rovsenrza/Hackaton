@@ -145,7 +145,7 @@ export default function Inspector({ data }: { data: StaticData }) {
         <div>
           <div className="flex items-start gap-3">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full font-display text-base font-bold text-[var(--bg)]"
-              style={{ background: hub.action === "new" ? C.hub : hub.action === "integrate" ? C.station : C.upgrade }}>{hub.rank}</span>
+              style={{ background: hub.action === "new" ? C.hub : hub.action === "integrate" ? C.integrate : C.upgrade }}>{hub.rank}</span>
             <div>
               <h2 className="font-display text-lg font-semibold leading-tight">{hub.label}</h2>
               <p className="text-xs text-[var(--muted)]">

@@ -3,7 +3,7 @@
 import type { StaticData } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { approx, pct } from "@/lib/format";
-import { C } from "@/lib/theme";
+import { C, actionColor } from "@/lib/theme";
 import { getMap } from "./MapView";
 
 /** Sıralanmış hub-lar metro xətti sxemi kimi: stansiyalar = hub-lar (MCLP sırası), qalınlıq = qazanc. */
@@ -31,7 +31,7 @@ export default function HubLine({ data }: { data: StaticData }) {
         <ol className="relative flex w-full items-start">
           {hubs.map((h, i) => {
             const th = 3 + (h.gain_share / maxGain) * 7;
-            const col = h.action === "new" ? C.hub : C.upgrade;
+            const col = actionColor(h.action);
             return (
               <li key={h.rank} className="relative min-w-0 flex-1">
                 {i < hubs.length - 1 && <span className="absolute left-1/2 top-[13px] w-full -translate-y-1/2" style={{ height: th, background: col, opacity: 0.85 }} aria-hidden />}
