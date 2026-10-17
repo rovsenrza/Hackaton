@@ -1,0 +1,30 @@
+[project]
+name = "ayan-pipeline"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "“rovsenrza”", email = "rovsen.rzayev.2009@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "geopandas>=1.2.0",
+    "h3>=4.5.0",
+    "networkx>=3.7",
+    "osmium>=4.3.1",
+    "osmnx>=2.1.1",
+    "overturemaps>=1.0.2",
+    "pandas>=3.0.6",
+    "pyogrio>=0.13.0",
+    "pyproj>=3.8.0",
+    "pytest>=9.1.1",
+    "rasterio>=1.5.2",
+    "scikit-learn>=1.9.1",
+    "shapely>=2.2.0",
+]
+
+[project.scripts]
+ayan-pipeline = "ayan_pipeline:main"
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"
