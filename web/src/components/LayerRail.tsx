@@ -63,7 +63,7 @@ export default function LayerRail({ data }: { data: StaticData }) {
   const setW = (k: keyof typeof w, v: number) => s.set({ weights: { ...w, [k]: v } });
 
   return (
-    <aside className="absolute left-4 top-20 bottom-44 z-20 flex w-72 flex-col gap-3 overflow-y-auto rounded-md bg-[var(--surface)]/95 p-4 shadow-xl ring-1 ring-[var(--line)]" aria-label="Qatlar">
+    <aside className="absolute left-4 top-20 z-20 flex max-h-[calc(100%-15rem)] w-72 flex-col gap-3 overflow-y-auto rounded-md bg-[var(--surface)]/95 p-4 shadow-xl ring-1 ring-[var(--line)]" aria-label="Qatlar">
       <section>
         <h2 className="mb-2 text-sm font-semibold">Qatlar</h2>
         <ul className="space-y-0.5">

@@ -107,7 +107,7 @@ export default function Inspector({ data }: { data: StaticData }) {
   };
 
   return (
-    <aside className="absolute right-4 top-20 bottom-44 z-20 w-[22rem] overflow-y-auto rounded-md bg-[var(--surface)]/95 p-4 shadow-xl ring-1 ring-[var(--line)]" aria-label="Göstəricilər">
+    <aside className="absolute right-4 top-20 z-20 max-h-[calc(100%-15rem)] w-[22rem] overflow-y-auto rounded-md bg-[var(--surface)]/95 p-4 shadow-xl ring-1 ring-[var(--line)]" aria-label="Göstəricilər">
       {sel && (
         <button onClick={() => s.set({ selected: null })} className="mb-2 text-xs text-[var(--muted)] hover:text-[var(--text)]">← Şəhər üzrə göstəricilər</button>
       )}
