@@ -32,6 +32,16 @@ DOCK_RANGE = {"S": (6, 10), "M": (12, 20), "L": (24, 40)}
 DOCK_TURNOVER = 4  # səfər / yer / gün
 
 
+def parse_routes(v) -> list[str]:
+    """Marşrut siyahısı: GPKG/parquet-də mətn kimi saxlana bilər ("['1', '2']")."""
+    import ast
+    if v is None:
+        return []
+    if isinstance(v, str):
+        return [str(r) for r in ast.literal_eval(v)] if v.startswith("[") else [v]
+    return [str(r) for r in v]
+
+
 def co2_t(trips: float, case: str) -> float:
     ef_new = CO2["mix_scooter"] * CO2["scooter"][CASE_EF[case]]
     return trips * CO2["shift"][case] * CO2["km"] * (CO2["car"] - ef_new) * 365 / 1000
@@ -143,6 +153,6 @@ def load_core(data_dir: Path) -> HubCore:
     cells = pd.read_parquet(data_dir / "cells.parquet")
     rd = lambda f: gpd.read_parquet(data_dir / f)
     stops = rd("stops.parquet")
-    stops["routes"] = stops.routes.apply(lambda v: list(v) if v is not None else [])
+    stops["routes"] = stops.routes.apply(parse_routes)
     return HubCore(net, cells, rd("metro.parquet"), stops, rd("stations.parquet"), rd("parks.parquet"),
                    rd("masks.parquet"), params["K"])

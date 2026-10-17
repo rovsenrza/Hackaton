@@ -14,7 +14,7 @@ from shapely.geometry import Point
 from sklearn.metrics import roc_auc_score
 
 from common import BUILD, ENGINE_DATA, EXT, HUB_WALK_M, OSM_PBF, UTM, WGS84
-from hubcore import HubCore, build_masks, co2_t
+from hubcore import HubCore, build_masks, co2_t, parse_routes
 from walk import WalkNet
 
 T0 = time.time()
@@ -35,7 +35,7 @@ net = WalkNet(ENGINE_DATA / "walk_graph.pkl")
 metro = gpd.read_file(BUILD / "metro_exits.gpkg").to_crs(UTM)
 stations = gpd.read_file(BUILD / "bus_stations.gpkg").to_crs(UTM)
 stops = gpd.read_file(BUILD / "bus_stops.gpkg").to_crs(UTM)
-stops["routes"] = stops.routes.apply(lambda v: list(v) if v is not None else [])
+stops["routes"] = stops.routes.apply(parse_routes)
 parks = gpd.read_file(BUILD / "parkings.gpkg").to_crs(UTM)
 lanes = gpd.read_file(BUILD / "bike_lanes.gpkg").to_crs(UTM)
 
@@ -164,7 +164,7 @@ for rank, (i, g) in enumerate(zip(picks, gains), 1):
     c = C.iloc[i]
     ev = core.evaluate(c.px, c.py, cov=A[i].indices)
     ll = gpd.GeoSeries([Point(c.px, c.py)], crs=UTM).to_crs(WGS84).iloc[0]
-    hubs.append({"rank": rank, "id": f"AYAN-20261018-{c.ref.lower()[:7]}-{ev['type']}", "cand": int(i),
+    hubs.append({"rank": rank, "id": f"AYAN-20261018-{c.ref.lower()}-{ev['type']}", "cand": int(i),
                  "action": c.action, "anchor_kind": c.kind, "label": c.label,
                  "lon": round(ll.x, 6), "lat": round(ll.y, 6), "x": round(c.px, 1), "y": round(c.py, 1),
                  "offset_m": c.offset_m, "qa": c.qa, "gain_w": round(g, 2), "gain_share": round(g / W_TOTAL, 4),

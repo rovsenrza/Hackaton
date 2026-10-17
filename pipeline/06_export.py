@@ -89,3 +89,6 @@ for f in ("convert_report", "demand_report", "hubs_report", "walk_graph_report")
 sizes["metrics.json"] = round((WEB_DATA / "metrics.json").stat().st_size / 1024)
 
 print(json.dumps(sizes, indent=1), "cəmi KB:", sum(sizes.values()))
+
+# --- Engine üçün hub toxumu (təsdiq axınının başlanğıc siyahısı) ---------------
+(ENGINE_DATA / "hubs_seed.json").write_text(json.dumps(hubs["hubs"], ensure_ascii=False))
