@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0F2430;
+  --surface: #16313F;
+  --surface2: #1D3E4F;
+  --line: #2A5163;
+  --text: #E8EEF0;
+  --muted: #8FA6B2;
+  --metro: #D6403A;
+  --bus: #3D8FD6;
+  --bike: #3CB37A;
+  --hub: #F2A93B;
+  --upgrade: #C9A0FF;
+}
+
+@theme inline {
+  --font-sans: var(--font-archivo), system-ui, sans-serif;
+  --font-display: var(--font-archivo), system-ui, sans-serif;
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  font-feature-settings: "tnum" 0;
+}
+.font-display { font-stretch: 88%; letter-spacing: -0.01em; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--hub); outline-offset: 2px; }
+select option { background: var(--surface2); }
+.maplibregl-ctrl-attrib { background: rgba(15, 36, 48, 0.75) !important; color: var(--muted); }
+.maplibregl-ctrl-attrib a { color: var(--muted) !important; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
