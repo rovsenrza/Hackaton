@@ -77,8 +77,18 @@ for c in C.itertuples():
     near = core.nearest_parking(c.x, c.y, 150)
     if c.kind == "parking" or near is not None:
         k = int(np.flatnonzero(parks.id.values == c.ref)[0]) if c.kind == "parking" else near[0]
-        act.append("upgrade"); px.append(park_xy[k, 0]); py.append(park_xy[k, 1]); off.append(0.0)
-        qa.append("mövcud parkinq koordinatı (real dünyada sınanmış)")
+        # AYNA koordinatı icazəli ərazidədirsə saxlanılır; yolun üstünə düşürsə ən yaxın səki nöqtəsinə köçürülür
+        p, o = core.place(park_xy[k, 0], park_xy[k, 1], r_min=0)
+        act.append("upgrade")
+        if p is None:
+            px.append(park_xy[k, 0]); py.append(park_xy[k, 1]); off.append(0.0)
+            qa.append("mövcud parkinq koordinatı (AYNA); 60 m-də icazəli səki tapılmadı, yoxlanmalıdır")
+        elif o == 0:
+            px.append(p.x); py.append(p.y); off.append(0.0)
+            qa.append("mövcud parkinq koordinatı (AYNA), icazəli ərazidədir")
+        else:
+            px.append(p.x); py.append(p.y); off.append(o)
+            qa.append(f"AYNA parkinq koordinatı yolun hərəkət hissəsinə düşürdü, {o} m kənara, səkiyə köçürüldü")
     else:
         p, o = core.place(c.x, c.y)
         if p is None:

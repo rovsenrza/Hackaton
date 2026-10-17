@@ -17,12 +17,15 @@ from walk import WalkNet
 
 HUB_WALK_M = 400
 NODE_WALK_MAX = 60     # hub nəqliyyat düyünündən ≤ 60 m piyada
-ROAD_CLEAR = 1.5       # hərəkət hissəsindən minimum məsafə (m)
+ROAD_CLEAR = 2.5       # hərəkət hissəsindən minimum məsafə (m)
+SIDEWALK_TARGET = 4.0  # hub-un yol kənarından ideal məsafəsi: səki zolağının ortası (m)
 MOTOR = ("motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link", "secondary", "secondary_link",
          "tertiary", "tertiary_link", "residential", "unclassified", "living_street", "service")
-WIDTH = {"motorway": 24, "motorway_link": 8, "trunk": 21, "trunk_link": 7, "primary": 14, "primary_link": 7,
-         "secondary": 10.5, "secondary_link": 6, "tertiary": 7, "tertiary_link": 6, "residential": 6,
-         "unclassified": 6, "living_street": 5, "service": 4}
+# Hərəkət hissəsinin tam eni (m): Bakı prospektlərində `lanes` teqi çox vaxt yoxdur,
+# buna görə defolt enlər ehtiyatlı (geniş) götürülür; peyk yoxlaması ilə kalibrlənib.
+WIDTH = {"motorway": 28, "motorway_link": 8, "trunk": 24, "trunk_link": 8, "primary": 18, "primary_link": 8,
+         "secondary": 14, "secondary_link": 7, "tertiary": 10, "tertiary_link": 7, "residential": 7,
+         "unclassified": 7, "living_street": 6, "service": 5}
 
 # CO₂ parametrləri (bax: PLAN.md 4.11)
 CO2 = {"car": 0.173, "scooter": {"low": 0.030, "base": 0.060, "high": 0.124}, "mix_scooter": 0.70,
@@ -55,9 +58,11 @@ def build_masks(lines: gpd.GeoDataFrame, mpoly: gpd.GeoDataFrame, buildings: gpd
     road_m = roads.geometry.buffer(width / 2 + ROAD_CLEAR, cap_style="flat")
     rail = lines[lines.railway.isin(["rail", "light_rail", "tram", "narrow_gauge"])].to_crs(crs).buffer(4)
     water = mpoly[(mpoly.natural == "water") | mpoly.other_tags.fillna("").str.contains('"landuse"=>"construction"')].to_crs(crs).geometry
-    kind = ["road"] * len(road_m) + ["rail"] * len(rail) + ["water"] * len(water) + ["building"] * len(buildings)
-    geoms = list(road_m) + list(rail) + list(water) + list(buildings.to_crs(crs))
-    return gpd.GeoDataFrame({"kind": kind}, geometry=geoms, crs=crs)
+    kind = (["road"] * len(road_m) + ["rail"] * len(rail) + ["water"] * len(water) + ["building"] * len(buildings)
+            + ["roadline"] * len(roads))
+    widths = [0.0] * (len(road_m) + len(rail) + len(water) + len(buildings)) + list(width)
+    geoms = list(road_m) + list(rail) + list(water) + list(buildings.to_crs(crs)) + list(roads.geometry)
+    return gpd.GeoDataFrame({"kind": kind, "width": widths}, geometry=geoms, crs=crs)
 
 
 class HubCore:
@@ -68,8 +73,12 @@ class HubCore:
         net.attach_points(cells[["x", "y"]].values)
         self._snaps = {name: net.snap(np.c_[g.geometry.x, g.geometry.y]) if len(g) else (np.empty(0), np.empty(0))
                        for name, g in (("metro", metro), ("stops", stops), ("stations", stations), ("parks", parks))}
-        self.mask_tree = STRtree(list(masks.geometry))
-        self.mask_kind = masks.kind.values
+        poly = masks[masks.kind != "roadline"]
+        lines = masks[masks.kind == "roadline"]
+        self.mask_tree = STRtree(list(poly.geometry))
+        self.mask_kind = poly.kind.values
+        self.road_tree = STRtree(list(lines.geometry))
+        self.road_half = lines.width.values / 2
 
     # --- kontekst ---------------------------------------------------------------
     def _within(self, name, reach, limit):
@@ -102,19 +111,40 @@ class HubCore:
     def is_free(self, p: Point) -> bool:
         return len(self.mask_tree.query(p, predicate="intersects")) == 0
 
-    def place(self, x: float, y: float, r_min: float = 8.0):
-        """(x, y)-yə ≤ 60 m piyada, icazəli ərazidə ən yaxın nöqtə → (Point, ofset m) və ya (None, None)."""
+    def edge_distance(self, pts) -> np.ndarray:
+        """Nöqtələrdən ən yaxın yolun hərəkət hissəsinin kənarına məsafə (m)."""
+        idx, d = self.road_tree.query_nearest(pts, return_distance=True, all_matches=False)
+        out = np.full(len(pts), np.inf)
+        out[idx[0]] = d - self.road_half[idx[1]]
+        return out
+
+    def place(self, x: float, y: float, r_min: float = 4.0):
+        """(x, y) düyününə ≤ 60 m piyada, icazəli ərazidə ən yaxşı nöqtə → (Point, ofset m) və ya (None, None).
+
+        Ən yaxşı = səki zolağının ortası (yol kənarından ~4 m) və düyünə mümkün qədər yaxın.
+        """
+        from shapely import points as mk_points
+        rr, aa = np.meshgrid(np.arange(r_min, 46, 2.0), np.linspace(0, 2 * np.pi, 48, endpoint=False))
+        rr, aa = rr.ravel(), aa.ravel()
+        if r_min == 0:
+            rr, aa = np.r_[0.0, rr], np.r_[0.0, aa]
+        P = mk_points(x + rr * np.cos(aa), y + rr * np.sin(aa))
+        hit = np.zeros(len(P), bool)
+        hit[np.unique(self.mask_tree.query(P, predicate="intersects")[0])] = True
+        edge = self.edge_distance(P)
+        ok = ~hit & (edge >= ROAD_CLEAR)
+        if not ok.any():
+            return None, None
+        score = np.abs(np.minimum(edge, 15) - SIDEWALK_TARGET) + 0.15 * rr
+        score[~ok] = np.inf
         reach = self.net.reach(x, y, NODE_WALK_MAX)
-        if r_min == 0 and self.is_free(Point(x, y)):
-            return Point(x, y), 0.0
-        for r in np.arange(max(r_min, 3.0), 46, 3):
-            for a in np.linspace(0, 2 * np.pi, 36, endpoint=False):
-                p = Point(x + r * np.cos(a), y + r * np.sin(a))
-                if not self.is_free(p):
-                    continue
-                n, d = self.net.snap([p.x, p.y])
-                if n[0] in reach and reach[n[0]] + d[0] <= NODE_WALK_MAX:
-                    return p, round(float(r), 1)
+        for k in np.argsort(score)[:40]:
+            if not np.isfinite(score[k]):
+                break
+            p = P[k]
+            n, d = self.net.snap([p.x, p.y])
+            if n[0] in reach and reach[n[0]] + d[0] <= NODE_WALK_MAX:
+                return Point(p.x, p.y), round(float(rr[k]), 1)
         return None, None
 
     # --- qiymətləndirmə -------------------------------------------------------------
