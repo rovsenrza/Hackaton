@@ -33,9 +33,13 @@ def write_geojson(gdf, name, props, simplify=True, precision=6):
 
 r = lambda v, n=0: None if v is None or (isinstance(v, float) and np.isnan(v)) else round(float(v), n)
 
-routes = gpd.read_file(BUILD / "bus_routes_pax.gpkg")
+routes = gpd.read_file(BUILD / "bus_routes_pax.gpkg")     # AYNA cari şəbəkəsi
 routes["pax"] = routes.pax.round(-1)
-write_geojson(routes, "bus_routes", ["route", "pax", "pax_status", "n_stops"])
+write_geojson(routes, "bus_routes", ["route", "pax", "pax_status", "n_stops", "operator"])
+off = gpd.read_file(BUILD / "official_hubs.gpkg")
+off["modes"] = off.modes.apply(json.loads)
+write_geojson(off, "official_hubs", ["id", "name", "n_stops", "n_routes", "modes"], simplify=False)
+write_geojson(gpd.read_file(BUILD / "rail_stations.gpkg"), "rail_stations", ["name", "n_routes"], simplify=False)
 
 metro = gpd.read_file(BUILD / "metro_exits.gpkg")
 metro["station_pax"] = metro.station_pax.round(-2)
@@ -83,7 +87,7 @@ sizes["hubs.json"] = round((WEB_DATA / "hubs.json").stat().st_size / 1024)
 
 # --- Metrikalar (panel, metodologiya, keyfiyyət) -------------------------------
 metrics = {}
-for f in ("convert_report", "demand_report", "hubs_report", "walk_graph_report"):
+for f in ("convert_report", "demand_report", "hubs_report", "walk_graph_report", "ayna_report"):
     metrics[f.replace("_report", "")] = json.loads((BUILD / f"{f}.json").read_text())
 (WEB_DATA / "metrics.json").write_text(json.dumps(metrics, ensure_ascii=False, separators=(",", ":"), default=float))
 sizes["metrics.json"] = round((WEB_DATA / "metrics.json").stat().st_size / 1024)

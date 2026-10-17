@@ -34,7 +34,9 @@ cells = pd.read_parquet(BUILD / "cells.parquet")
 net = WalkNet(ENGINE_DATA / "walk_graph.pkl")
 metro = gpd.read_file(BUILD / "metro_exits.gpkg").to_crs(UTM)
 stations = gpd.read_file(BUILD / "bus_stations.gpkg").to_crs(UTM)
-stops = gpd.read_file(BUILD / "bus_stops.gpkg").to_crs(UTM)
+stops = gpd.read_file(BUILD / "bus_stops.gpkg").to_crs(UTM)       # AYNA rəsmi dayanacaqları
+rail = gpd.read_file(BUILD / "rail_stations.gpkg").to_crs(UTM)
+official = gpd.read_file(BUILD / "official_hubs.gpkg").to_crs(UTM)
 stops["routes"] = stops.routes.apply(parse_routes)
 parks = gpd.read_file(BUILD / "parkings.gpkg").to_crs(UTM)
 lanes = gpd.read_file(BUILD / "bike_lanes.gpkg").to_crs(UTM)
@@ -50,7 +52,7 @@ log(f"data və maskalar yükləndi ({len(masks)} maska)")
 # --- 1. Kalibrləmə: tələbat → gündəlik mikromobillik səfəri --------------------
 # AYNA, sentyabr 2026: 547 758 sifariş / 30 gün; 1 495 parkinq nöqtəsi (623 velo + 872 scooter)
 TRIPS_PER_POINT = 547_758 / 30 / 1_495
-core = HubCore(net, cells, metro, stops, stations, parks, masks, K=1.0)
+core = HubCore(net, cells, metro, stops, stations, parks, masks, K=1.0, rail=rail, official=official)
 Dcov_parks = np.array([cells.D.values[net.covered(g.x, g.y, HUB_WALK_M)].sum() for g in parks.geometry])
 core.K = K = TRIPS_PER_POINT / Dcov_parks.mean()
 rep["calibration"] = {"trips_per_point_day": round(TRIPS_PER_POINT, 2), "k": round(float(K), 4)}
@@ -63,7 +65,11 @@ for _, r in stations.iterrows():
     C.append({"kind": "bus_station", "ref": r.id, "label": r["name"], "x": r.geometry.x, "y": r.geometry.y})
 for _, r in stops[stops.routes.str.len() >= 2].iterrows():
     nm = r["name"] if isinstance(r["name"], str) and r["name"] else "Avtobus dayanacağı"
-    C.append({"kind": "bus_stop", "ref": f"S{r.osm_id}", "label": nm, "x": r.geometry.x, "y": r.geometry.y})
+    C.append({"kind": "bus_stop", "ref": f"S{r.code}", "label": nm, "x": r.geometry.x, "y": r.geometry.y})
+for _, r in rail.iterrows():
+    C.append({"kind": "rail_station", "ref": f"R{r['name'][:12]}", "label": f"{r['name']} qatar stansiyası", "x": r.geometry.x, "y": r.geometry.y})
+for _, r in official.iterrows():
+    C.append({"kind": "official_hub", "ref": r.id, "label": r["name"], "x": r.geometry.x, "y": r.geometry.y})
 for _, r in parks.iterrows():
     C.append({"kind": "parking", "ref": r.id, "label": r["name"] or "Mövcud parkinq", "x": r.geometry.x, "y": r.geometry.y,
               "ptype": r.ptype})
@@ -73,8 +79,21 @@ rep["candidates"] = C.kind.value_counts().to_dict()
 # --- 3. Hər namizədin yerləşməsi (tövsiyə növü + icazəli nöqtə) ----------------
 park_xy = np.c_[parks.geometry.x, parks.geometry.y]
 act, px, py, off, qa = [], [], [], [], []
+off_n, off_d = net.snap(np.c_[official.geometry.x, official.geometry.y]) if len(official) else (np.empty(0), np.empty(0))
 for c in C.itertuples():
     near = core.nearest_parking(c.x, c.y, 150)
+    r150 = net.reach(c.x, c.y, 150)
+    near_off = any((n in r150) and r150[n] + d <= 150 for n, d in zip(off_n, off_d))
+    if c.kind == "official_hub" or near_off:
+        # AYNA-nın rəsmi mübadilə mərkəzi: yeni hub yox, mikromobilliyin inteqrasiyası
+        p, o = core.place(c.x, c.y, r_min=0)
+        if p is None:
+            act.append("rejected"); px.append(np.nan); py.append(np.nan); off.append(np.nan)
+            qa.append("60 m daxilində icazəli yer yoxdur")
+        else:
+            act.append("integrate"); px.append(p.x); py.append(p.y); off.append(o)
+            qa.append("AYNA rəsmi mübadilə mərkəzi: səki zolağında, yoldan ≥2,5 m, bina/dəmir yolu/su xaricində")
+        continue
     if c.kind == "parking" or near is not None:
         k = int(np.flatnonzero(parks.id.values == c.ref)[0]) if c.kind == "parking" else near[0]
         # AYNA koordinatı icazəli ərazidədirsə saxlanılır; yolun üstünə düşürsə ən yaxın səki nöqtəsinə köçürülür
@@ -183,6 +202,24 @@ populated = cells["pop"].values > 0
 auc_all = auc_set(populated)
 auc_ring = auc_set(populated & (dcen <= 8000))  # mərkəzdən 8 km halqası: "mərkəz effekti" çıxarılır
 
+# AYNA-nın rəsmi mübadilə mərkəzləri: model onları müstəqil tapırmı? (skorinq "hub" bayrağını bilmir)
+def official_recall(sel, radius=400):
+    hit = np.zeros(len(official), bool)
+    for i in sel:
+        r = net.reach(C.px.iat[i], C.py.iat[i], radius)
+        hit |= np.array([(n in r) and r[n] + d <= radius for n, d in zip(off_n, off_d)])
+    return hit
+
+
+non_off = np.flatnonzero(ok & (C.kind != "official_hub").values)
+p_wo, _ = greedy(cells.w.values, n=N_MAX, allowed=(C.kind != "official_hub").values)  # rəsmi hub namizədləri çıxarılmış
+rec = {}
+for k in (10, 20, 50):
+    hit = official_recall(p_wo[:k])
+    rand = np.mean([official_recall(rng.choice(non_off, k, replace=False)).mean() for _ in range(40)])
+    rec[k] = {"model": round(float(hit.mean()), 3), "random": round(float(rand), 3),
+              "found": [str(official.name.iat[j]) for j in np.flatnonzero(hit)]}
+
 # MPV (yeni velosiped məntəqələri qovluğu) MPS şəbəkəsinin yanında yerləşirmi? Təsadüfi baza ilə.
 mps, mpv = parks[parks.ptype == "MPS"], parks[parks.ptype == "MPV"]
 mps_tree = __import__("shapely").STRtree(list(mps.geometry))
@@ -191,6 +228,7 @@ pw = cells["pop"].values / cells["pop"].values.sum()
 rnd = rng.choice(len(cells), 5000, p=pw)
 d_rnd = np.array([mps.geometry.iloc[mps_tree.nearest(Point(cells.x.values[i], cells.y.values[i]))].distance(Point(cells.x.values[i], cells.y.values[i])) for i in rnd])
 rep["validation"] = {
+    "official_hub_recall": {"n_official": len(official), "by_k": rec},
     "demand_auc_vs_ayna_parkings": auc_all,
     "demand_auc_within_8km": auc_ring,
     "mpv_vs_mps": {"n_mpv": int(len(mpv)), "median_m_to_mps": round(float(np.median(d_mpv))),
@@ -217,6 +255,7 @@ for rank, (i, g) in enumerate(zip(picks, gains), 1):
 hxy = np.array([[h["x"], h["y"]] for h in hubs])
 dmin = [float(np.sort(np.hypot(*(hxy - p).T))[1]) for p in hxy]
 rep["placement_qa"] = {"placed": len(hubs), "needs_review": sum("yoxlanmalıdır" in h["qa"] for h in hubs),
+                       "integrate": sum(h["action"] == "integrate" for h in hubs),
                        "moved": sum(h["offset_m"] > 0 for h in hubs), "new": sum(h["action"] == "new" for h in hubs),
                        "upgrade": sum(h["action"] == "upgrade" for h in hubs), "min_spacing_m": round(min(dmin), 1),
                        "new_hubs_free_check": all(core.is_free(Point(h["x"], h["y"])) for h in hubs if h["action"] == "new")}
@@ -238,6 +277,9 @@ def walk_to(xy_targets, x, y, limit=1500):
 lane_xy = np.array([ls.interpolate(t).coords[0] for g in lanes.geometry for ls in getattr(g, "geoms", [g])
                     for t in np.arange(0, ls.length, 20)])
 metro_xy = np.c_[metro.geometry.x, metro.geometry.y]
+intercity = pd.read_csv(BUILD / "intercity.csv")
+_ic = gpd.GeoSeries(gpd.points_from_xy(intercity.lon, intercity.lat), crs=WGS84).to_crs(UTM)
+ic_xy = np.c_[_ic.x, _ic.y]
 arrival = []
 bld = masks[masks.kind == "building"]
 bld_tree = __import__("shapely").STRtree(list(bld.geometry))
@@ -255,6 +297,7 @@ for _, s in stations.iterrows():
     dm = min(walk_to(metro_xy, ox, oy) for ox, oy in origins)
     dp = min(walk_to(park_xy, ox, oy) for ox, oy in origins)
     dl = min(walk_to(lane_xy, ox, oy) for ox, oy in origins)
+    ic = intercity[np.hypot(ic_xy[:, 0] - x, ic_xy[:, 1] - y) <= 500].route.nunique()
     parts = {"metro": lin(dm, 300, 800), "bus": min(len(ctx["bus_routes"]) / 20, 1.0),
              "parking": lin(dp, 150, 400), "lane": lin(dl, 200, 800)}
     score = 5 * (0.35 * parts["metro"] + 0.25 * parts["bus"] + 0.25 * parts["parking"] + 0.15 * parts["lane"])
@@ -262,7 +305,8 @@ for _, s in stations.iterrows():
     arrival.append({"id": s.id, "name": s["name"], "lon": round(ll.x, 6), "lat": round(ll.y, 6), "score": round(score, 1),
                     "parts": {k: round(v, 2) for k, v in parts.items()},
                     "metro_walk_m": None if np.isinf(dm) else round(dm), "parking_walk_m": None if np.isinf(dp) else round(dp),
-                    "lane_walk_m": None if np.isinf(dl) else round(dl), "bus_routes_400": len(ctx["bus_routes"])})
+                    "lane_walk_m": None if np.isinf(dl) else round(dl), "bus_routes_400": len(ctx["bus_routes"]),
+                    "intercity_routes": int(ic)})
 rep["arrival"] = arrival
 
 # --- 10. Şəhər göstəriciləri və boşluq potensialı ----------------------------------------
@@ -307,6 +351,7 @@ cells[["h3", "x", "y", "pop", "transit", "poi", "transit_n", "pop_n", "poi_n", "
 C.to_parquet(E / "candidates.parquet")
 sparse.save_npz(E / "coverage.npz", A)
 metro.to_parquet(E / "metro.parquet"); stops.to_parquet(E / "stops.parquet")
+rail.to_parquet(E / "rail.parquet"); official.to_parquet(E / "official.parquet")
 stations.to_parquet(E / "stations.parquet"); parks.to_parquet(E / "parks.parquet")
 masks.to_parquet(E / "masks.parquet")
 (E / "params.json").write_text(json.dumps({"K": K, "weights": W_DEFAULT, "min_spacing": MIN_SPACING,

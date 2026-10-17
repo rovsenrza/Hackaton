@@ -57,20 +57,20 @@ for lon, lat, p in zip(px_lon, px_lat, px_pop):
         pop_cells[c] = pop_cells.get(c, 0.0) + share
 rep["pop_cells_sum"] = round(sum(pop_cells.values()))
 
-# --- 2. Avtobus dayanacaqları (OSM) və marşrut bağlantısı ------------------
-pts = gpd.read_file(OSM_PBF, layer="points", bbox=tuple(gpd.GeoSeries([zone_u], crs=UTM).to_crs(WGS84).total_bounds))
-st = pts[pts.highway.eq("bus_stop")][["osm_id", "name", "geometry"]].to_crs(UTM)
+# --- 2. Avtobus dayanacaqları və marşrut bağlantısı: AYNA xəritə API-si (rəsmi ardıcıllıq) -----
+# Əvvəlki versiya OSM dayanacaqlarını marşruta 25 m yaxınlıqla bağlayırdı; indi bağlantı rəsmidir.
+import json as _json
+st = gpd.read_file(BUILD / "ayna_stops.gpkg").to_crs(UTM)
 st = st[st.within(zone_u)].reset_index(drop=True)
-routes = gpd.read_file(BUILD / "bus_routes.gpkg").to_crs(UTM)
-
-pairs = gpd.sjoin(st, routes[["route", "geometry"]].assign(geometry=routes.buffer(STOP_ROUTE_M)), predicate="within")
-stop_routes = pairs.groupby(level=0).route.apply(list)
-st["routes"] = stop_routes.reindex(st.index).apply(lambda v: v if isinstance(v, list) else [])
-st["n_routes"] = st.routes.str.len()
-n_stops = pairs.groupby("route").size()
-routes["n_stops"] = routes.route.map(n_stops).fillna(0).astype(int)
-rep["bus_stops"] = {"osm_in_zone": len(st), "with_route": int((st.n_routes > 0).sum()),
-                    "routes_without_stops": int((routes.n_stops == 0).sum())}
+st["routes"] = st.routes.apply(_json.loads)
+routes = gpd.read_file(BUILD / "ayna_routes.gpkg").to_crs(UTM)   # cari 184 şəhərdaxili marşrut
+bb = pd.read_csv(RAW / "bakubus_gundelik_sernisin_2026.csv", encoding="utf-8-sig")
+bb.columns = ["date", "route", "trips"]
+bb["route"] = bb.route.astype(str).str.replace(r"\s+", "", regex=True).str.upper()
+routes["pax_measured"] = routes.route.map(bb.groupby("route").trips.mean())
+rep["bus_stops"] = {"source": "AYNA xəritə API-si", "stops_in_zone": len(st), "routes": len(routes),
+                    "routes_with_ridership": int(routes.pax_measured.notna().sum()),
+                    "bakubus_not_in_ayna": sorted(set(bb.route) - set(routes.route))}
 
 # --- 3. Cazibə nöqtələri (Overture Places) ---------------------------------
 POI_W = {  # Overture basic_category → çəki (gündəlik cəlbetmə gücünə görə)

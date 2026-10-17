@@ -38,7 +38,8 @@ function fly(lon: number, lat: number) {
   m?.flyTo({ center: [lon, lat], zoom: Math.max(m.getZoom(), 15), duration: 900 });
 }
 
-type Metrics = Pick<Hub, "pop_covered" | "pop_newly_served" | "transit_daily" | "trips_day" | "trips_gross_day" | "docks" | "type" | "co2_t_year" | "metro_stations" | "bus_routes" | "parkings_400">;
+type Metrics = Pick<Hub, "pop_covered" | "pop_newly_served" | "transit_daily" | "trips_day" | "trips_gross_day" | "docks" | "type" | "co2_t_year" | "metro_stations" | "bus_routes" | "parkings_400"> &
+  Partial<Pick<Hub, "rail_stations" | "official_hub">>;
 
 function HubMetrics({ h }: { h: Metrics }) {
   return (
@@ -46,8 +47,10 @@ function HubMetrics({ h }: { h: Metrics }) {
       <Row k="5 dəq. piyada zonasında əhali" v={approx(h.pop_covered)} s="model" hint="WorldPop 2026, real piyada şəbəkəsi" />
       <Row k="Yeni xidmət alan sakin" v={approx(h.pop_newly_served)} s="model" hint="Bu hub-dan əvvəl 400 m-də heç bir parkinqi olmayan sakinlər" />
       <Row k="Zonadakı nəqliyyat minikləri" v={`${approx(h.transit_daily)}/gün`} s="model" hint="Metro (ölçülmüş) + avtobus (BakuBus ölçülmüş, özəl marşrutlar proqnoz)" />
+      {h.official_hub && <Row k="AYNA mübadilə mərkəzi" v={h.official_hub} s="measured" />}
       <Row k="Metro" v={h.metro_stations.length ? h.metro_stations.join(", ") : "yoxdur"} s="measured" />
-      <Row k="Avtobus marşrutları (400 m)" v={String(h.bus_routes.length)} s="measured" />
+      {!!h.rail_stations?.length && <Row k="Elektrik qatarı" v={h.rail_stations.join(", ")} s="measured" />}
+      <Row k="Avtobus marşrutları (400 m)" v={String(h.bus_routes.length)} s="measured" hint="AYNA rəsmi marşrut–dayanacaq ardıcıllığı" />
       <Row k="Mövcud parkinqlər (400 m)" v={String(h.parkings_400)} s="measured" />
       <Row k="Əlavə səfər" v={`${approx(h.trips_day)}/gün`} s="model"
         hint="Yalnız mövcud parkinqlərin xidmət etmədiyi tələbat. AYNA sentyabr 2026 dövriyyəsi ilə kalibrlənib (12,2 səfər/nöqtə/gün)" />
@@ -76,6 +79,10 @@ function CityOverview({ data }: { data: StaticData }) {
           hint="Yeni məntəqələr artıq xidmət olunan ərazilərdə toplanır" />
         <Row k="Tələbat modeli AYNA seçimlərini tanıyır" v={`AUC ${String(v.demand_auc_within_8km.D).replace(".", ",")}`} s="model"
           hint={`Mərkəzdən 8 km halqasında; təkcə mərkəzə yaxınlıq ${v.demand_auc_within_8km["yalnız_mərkəzə_yaxınlıq"]}, təkcə əhali ${v.demand_auc_within_8km.pop_n}`} />
+        {v.official_hub_recall && (
+          <Row k="Model AYNA mübadilə mərkəzlərini özü tapır" v={`${Math.round(v.official_hub_recall.by_k["20"].model * v.official_hub_recall.n_official)} / ${v.official_hub_recall.n_official} (təsadüfi: ${(v.official_hub_recall.by_k["20"].random * v.official_hub_recall.n_official).toFixed(1).replace(".", ",")})`} s="model"
+            hint="Top-20 hub, rəsmi hub namizədləri çıxarılmaqla; model “hub” bayrağını bilmir" />
+        )}
         <Row k="İlk 20 hub xidmətsiz tələbatı bağlayır" v={pct(m.mclp.share_closed["20"])} s="model" />
       </dl>
       <button onClick={() => set({ placing: true, toast: "Xəritədə hub qoymaq istədiyiniz yerə klikləyin" })}
@@ -138,13 +145,16 @@ export default function Inspector({ data }: { data: StaticData }) {
         <div>
           <div className="flex items-start gap-3">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full font-display text-base font-bold text-[var(--bg)]"
-              style={{ background: hub.action === "new" ? C.hub : C.upgrade }}>{hub.rank}</span>
+              style={{ background: hub.action === "new" ? C.hub : hub.action === "integrate" ? C.station : C.upgrade }}>{hub.rank}</span>
             <div>
               <h2 className="font-display text-lg font-semibold leading-tight">{hub.label}</h2>
               <p className="text-xs text-[var(--muted)]">
-                {hub.action === "new" ? "Yeni hub: 150 m daxilində parkinq yoxdur" : "Hub-a çevrilmə: yaxındakı parkinq nəqliyyatla inteqrasiya olunur"}
+                {{ new: "Yeni hub: 150 m daxilində parkinq yoxdur",
+                   upgrade: "Hub-a çevrilmə: yaxındakı parkinq nəqliyyatla inteqrasiya olunur",
+                   integrate: "AYNA mübadilə mərkəzinə mikromobillik inteqrasiyası" }[hub.action]}
                 {" · "}
-                {{ metro: "metro çıxışı", bus_station: "avtovağzal", parking: "mövcud parkinq", bus_stop: "avtobus dayanacağı" }[hub.anchor_kind]}
+                {{ metro: "metro çıxışı", bus_station: "avtovağzal", parking: "mövcud parkinq", bus_stop: "avtobus dayanacağı",
+                   rail_station: "qatar stansiyası", official_hub: "AYNA mübadilə mərkəzi" }[hub.anchor_kind]}
               </p>
             </div>
           </div>
@@ -205,6 +215,7 @@ export default function Inspector({ data }: { data: StaticData }) {
           <dl className="mt-3">
             <Row k="Metroya piyada" v={meters(st.metro_walk_m)} s="measured" />
             <Row k="Avtobus marşrutları (400 m)" v={String(st.bus_routes_400)} s="measured" />
+            <Row k="Şəhərlərarası marşrutlar" v={String(st.intercity_routes ?? 0)} s="measured" hint="AYNA xəritə API-si" />
             <Row k="Ən yaxın parkinq" v={meters(st.parking_walk_m)} s="measured" />
             <Row k="Ən yaxın velo-zolaq" v={meters(st.lane_walk_m)} s="measured" />
           </dl>

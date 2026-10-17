@@ -1,5 +1,5 @@
 export type HubType = "S" | "M" | "L";
-export type HubAction = "new" | "upgrade";
+export type HubAction = "new" | "upgrade" | "integrate";
 
 export interface Co2Range {
   low: number;
@@ -12,7 +12,7 @@ export interface Hub {
   id: string;
   cand?: number;
   action: HubAction;
-  anchor_kind: "metro" | "bus_stop" | "bus_station" | "parking";
+  anchor_kind: "metro" | "bus_stop" | "bus_station" | "parking" | "rail_station" | "official_hub";
   label: string;
   lon: number;
   lat: number;
@@ -32,6 +32,9 @@ export interface Hub {
   trips_gross_day: number;
   co2_t_year: Co2Range;
   metro_stations: string[];
+  rail_stations: string[];
+  /** AYNA-nın rəsmi Nəqliyyat Mübadilə Mərkəzi (≤ 150 m piyada) */
+  official_hub: string | null;
   metro_pax: number;
   bus_routes: string[];
   bus_station: boolean;
@@ -49,6 +52,7 @@ export interface Arrival {
   parking_walk_m: number | null;
   lane_walk_m: number | null;
   bus_routes_400: number;
+  intercity_routes: number;
 }
 
 export interface HubsFile {

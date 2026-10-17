@@ -58,6 +58,10 @@ def build_masks(lines: gpd.GeoDataFrame, mpoly: gpd.GeoDataFrame, buildings: gpd
     roads = lines[lines.highway.isin(MOTOR)].to_crs(crs)
     lanes = roads.other_tags.fillna("").str.extract(r'"lanes"=>"(\d+)"')[0].astype(float)
     width = np.where(lanes.notna(), lanes * 3.5 + roads.highway.map(LANE_EXTRA).fillna(0), roads.highway.map(WIDTH))
+    # Bakı prospektlərinin paralel yan yolları (birtərəfli, teqsiz): adətən 2–3 zolaq + parklanma
+    oneway = roads.other_tags.fillna("").str.contains('"oneway"=>"yes"')
+    side = oneway & lanes.isna() & roads.highway.isin(["unclassified", "residential", "tertiary", "secondary"])
+    width = np.where(side, np.maximum(width, 9.0), width)
     clear = np.where(roads.highway.isin(MAJOR), ROAD_CLEAR + 1.0, ROAD_CLEAR)
     road_m = roads.geometry.buffer(width / 2 + clear, cap_style="flat")
     rail = lines[lines.railway.isin(["rail", "light_rail", "tram", "narrow_gauge"])].to_crs(crs).buffer(4)
@@ -71,12 +75,17 @@ def build_masks(lines: gpd.GeoDataFrame, mpoly: gpd.GeoDataFrame, buildings: gpd
 
 class HubCore:
     def __init__(self, net: WalkNet, cells: pd.DataFrame, metro: gpd.GeoDataFrame, stops: gpd.GeoDataFrame,
-                 stations: gpd.GeoDataFrame, parks: gpd.GeoDataFrame, masks: gpd.GeoDataFrame, K: float):
+                 stations: gpd.GeoDataFrame, parks: gpd.GeoDataFrame, masks: gpd.GeoDataFrame, K: float,
+                 rail: gpd.GeoDataFrame | None = None, official: gpd.GeoDataFrame | None = None):
         self.net, self.cells, self.K = net, cells, K
         self.metro, self.stops, self.stations, self.parks = metro, stops, stations, parks
+        empty = gpd.GeoDataFrame({"name": []}, geometry=[], crs=metro.crs)
+        self.rail = rail if rail is not None else empty
+        self.official = official if official is not None else empty
         net.attach_points(cells[["x", "y"]].values)
         self._snaps = {name: net.snap(np.c_[g.geometry.x, g.geometry.y]) if len(g) else (np.empty(0), np.empty(0))
-                       for name, g in (("metro", metro), ("stops", stops), ("stations", stations), ("parks", parks))}
+                       for name, g in (("metro", metro), ("stops", stops), ("stations", stations), ("parks", parks),
+                                       ("rail", self.rail), ("official", self.official))}
         poly = masks[masks.kind != "roadline"]
         lines = masks[masks.kind == "roadline"]
         self.mask_tree = STRtree(list(poly.geometry))
@@ -95,7 +104,11 @@ class HubCore:
         bs, ps = self._within("stations", reach, HUB_WALK_M), self._within("parks", reach, HUB_WALK_M)
         routes = sorted({r for rr in self.stops.routes[ss] for r in rr}) if ss.any() else []
         mk = self.metro[ms]
-        return {"metro_stations": sorted(set(mk.station_az)),
+        rl = self._within("rail", reach, HUB_WALK_M)
+        of = self._within("official", self.net.reach(x, y, 150), 150)  # rəsmi mübadilə mərkəzi ≤ 150 m
+        return {"rail_stations": sorted(set(self.rail.name[rl])) if rl.any() else [],
+                "official_hub": str(self.official.name[of].iloc[0]) if of.any() else None,
+                "metro_stations": sorted(set(mk.station_az)),
                 "metro_pax": float(mk.groupby("key").station_pax.first().sum()) if len(mk) else 0.0,
                 "bus_routes": routes, "bus_station": bool(bs.any()), "parkings_400": int(ps.sum())}
 
@@ -123,19 +136,21 @@ class HubCore:
         return out
 
     def between_roads(self, p: Point, radius: float = 25.0) -> bool:
-        """Nöqtə iki yol xəttinin arasındadırmı (məs. ikiistiqamətli magistralın aralıq zolağı)?"""
+        """Nöqtə iki yol xəttinin arasındadırmı? (ikiistiqamətli magistralın aralıq zolağı və ya
+        əsas prospekt ilə paralel yan yol arasındakı ayırıcı). Cütdən ən azı biri geniş (≥ 10 m) olmalıdır."""
         idx = self.road_tree.query(p.buffer(radius))
-        idx = idx[self.road_half[idx] >= 5.0]  # yalnız geniş (≥ 10 m) yollar: median problemi magistrallardadır
-        vecs = []
+        vecs, wide = [], []
         for i in idx:
-            q = self.road_tree.geometries[i].interpolate(self.road_tree.geometries[i].project(p))
+            g = self.road_tree.geometries[i]
+            q = g.interpolate(g.project(p))
             v = np.array([q.x - p.x, q.y - p.y])
             n = np.hypot(*v)
             if n > 0.1:
                 vecs.append(v / n)
+                wide.append(self.road_half[i] >= 5.0)
         for i in range(len(vecs)):
             for j in range(i + 1, len(vecs)):
-                if vecs[i] @ vecs[j] < -0.5:  # 120°-dən çox: qarşı tərəflərdə
+                if (wide[i] or wide[j]) and vecs[i] @ vecs[j] < -0.5:  # 120°-dən çox: qarşı tərəflərdə
                     return True
         return False
 
@@ -186,9 +201,9 @@ class HubCore:
     gross_q: np.ndarray = np.array([0.0, 1.0])
 
     def classify(self, ctx: dict) -> str:
-        if ctx["bus_station"] or (ctx["metro_pax"] >= 30_000 and ctx["bus_routes"]):
+        if ctx["official_hub"] or ctx["bus_station"] or (ctx["metro_pax"] >= 30_000 and ctx["bus_routes"]):
             return "L"
-        if ctx["metro_stations"] or len(ctx["bus_routes"]) >= self.route_m:
+        if ctx["metro_stations"] or ctx["rail_stations"] or len(ctx["bus_routes"]) >= self.route_m:
             return "M"
         return "S"
 
@@ -230,8 +245,9 @@ def load_core(data_dir: Path) -> HubCore:
     rd = lambda f: gpd.read_parquet(data_dir / f)
     stops = rd("stops.parquet")
     stops["routes"] = stops.routes.apply(parse_routes)
+    opt = lambda f: rd(f) if (data_dir / f).exists() else None
     core = HubCore(net, cells, rd("metro.parquet"), stops, rd("stations.parquet"), rd("parks.parquet"),
-                   rd("masks.parquet"), params["K"])
+                   rd("masks.parquet"), params["K"], rail=opt("rail.parquet"), official=opt("official.parquet"))
     core.route_m = params.get("route_m", 3)
     core.gross_q = np.array(params.get("gross_q", [0.0, 1.0]))
     return core

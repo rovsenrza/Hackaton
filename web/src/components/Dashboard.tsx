@@ -131,7 +131,7 @@ export default function Dashboard({ data }: { data: StaticData }) {
             <h2 className="text-lg font-semibold">Avtovağzallar: gəliş balı</h2>
             <p className="text-sm text-[var(--muted)]">Şəhərə gələn sərnişin son kilometri nə ilə qət edə bilər (0–5)</p>
             <table className="mt-3 w-full text-sm">
-              <thead className="text-left text-xs text-[var(--muted)]"><tr><th className="py-1.5 font-normal">Avtovağzal</th><th className="font-normal">Bal</th><th className="font-normal">Metro</th><th className="font-normal">Marşrut</th><th className="font-normal">Parkinq</th></tr></thead>
+              <thead className="text-left text-xs text-[var(--muted)]"><tr><th className="py-1.5 font-normal">Avtovağzal</th><th className="font-normal">Bal</th><th className="font-normal">Metro</th><th className="font-normal">Marşrut</th><th className="font-normal">Şəhərlərarası</th><th className="font-normal">Parkinq</th></tr></thead>
               <tbody>
                 {data.hubs.arrival.map((a) => (
                   <tr key={a.id} className="border-t border-[var(--line)]">
@@ -139,6 +139,7 @@ export default function Dashboard({ data }: { data: StaticData }) {
                     <td className="font-display text-lg font-bold tabular-nums">{String(a.score).replace(".", ",")}</td>
                     <td className="tabular-nums">{a.metro_walk_m ? `${a.metro_walk_m} m` : "> 1,5 km"}</td>
                     <td className="tabular-nums">{a.bus_routes_400}</td>
+                    <td className="tabular-nums">{a.intercity_routes ?? 0}</td>
                     <td className="tabular-nums">{a.parking_walk_m ? `${a.parking_walk_m} m` : "> 1,5 km"}</td>
                   </tr>
                 ))}
