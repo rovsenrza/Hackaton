@@ -8,3 +8,5 @@ build/
 .DS_Store
 engine/data/*.db
 engine/data/
+engine/.env
+docs/AYNA-MAAS-API.md

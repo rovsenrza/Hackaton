@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { api, EngineOffline, post, type StaticData } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { approx, meters, pct, tons } from "@/lib/format";
@@ -58,6 +59,56 @@ function HubMetrics({ h }: { h: Metrics }) {
       <Row k="Tip və yer sayı" v={`${h.type} · ${h.docks} yer`} s="model" />
       <Row k="CO₂ qənaəti (əlavə səfərlər)" v={`${tons(h.co2_t_year.base)} t/il (${tons(h.co2_t_year.low)}–${tons(h.co2_t_year.high)})`} s="scenario" />
     </dl>
+  );
+}
+
+type Visit = { line?: string; destination?: string; expected?: string; lon?: number; lat?: number };
+type LiveStop = { code: string; name: string; dist_m: number; visits: Visit[] };
+
+/** AYNA MaaS (SIRI) canlı gəlişləri: hub-a ən yaxın 4 dayanacaq, engine üzərindən (30 s keş). */
+function LiveArrivals({ lon, lat }: { lon: number; lat: number }) {
+  const online = useStore((s) => s.engineOnline);
+  const [d, setD] = useState<{ enabled: boolean; has_live: boolean; stops: LiveStop[] } | null>(null);
+  useEffect(() => {
+    if (!online) return;
+    let alive = true;
+    const load = () =>
+      api<{ enabled: boolean; has_live: boolean; stops: LiveStop[] }>(`/live/near?lon=${lon}&lat=${lat}`)
+        .then((r) => alive && setD(r))
+        .catch(() => alive && setD(null));
+    load();
+    const t = setInterval(load, 30000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [lon, lat, online]);
+  if (!d?.enabled) return null;
+  const mins = (iso?: string) => {
+    if (!iso) return "";
+    const m = Math.round((new Date(iso).getTime() - Date.now()) / 60000);
+    return m <= 0 ? "indi" : `${m} dəq`;
+  };
+  const visits = d.stops.flatMap((s) => s.visits.map((v) => ({ ...v, stop: s.name }))).slice(0, 6);
+  return (
+    <div className="mt-3 rounded border border-[var(--line)] p-2.5">
+      <p className="flex items-center gap-2 text-xs font-semibold">
+        <span className={`h-1.5 w-1.5 rounded-full ${d.has_live ? "bg-[var(--bike)]" : "bg-[var(--muted)]"}`} />
+        Canlı gəlişlər · AYNA
+      </p>
+      {visits.length ? (
+        <ul className="mt-1.5 space-y-1 text-xs">
+          {visits.map((v, i) => (
+            <li key={i} className="flex justify-between gap-2">
+              <span><b>{v.line ?? "—"}</b> → {v.destination ?? "—"} <span className="text-[var(--muted)]">({v.stop})</span></span>
+              <span className="tabular-nums">{mins(v.expected)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-1 text-xs text-[var(--muted)]">Yaxın {d.stops.length} dayanacağa hazırda yaxınlaşan avtobus yoxdur (və ya xidmət saatlarından kənardır).</p>
+      )}
+    </div>
   );
 }
 
@@ -159,6 +210,7 @@ export default function Inspector({ data }: { data: StaticData }) {
             </div>
           </div>
           <div className="mt-3"><HubMetrics h={hub} /></div>
+          <LiveArrivals lon={hub.lon} lat={hub.lat} />
           {hub.stability != null && hub.rank <= 20 && (
             <Row k="Stabillik: çəkilər ±30% dəyişəndə top-20-də qalır" v={pct(hub.stability)} s="model" hint="500 təsadüfi ssenari" />
           )}

@@ -6,6 +6,8 @@ import { MapboxOverlay, type MapboxOverlayProps } from "@deck.gl/mapbox";
 import { ColumnLayer, GeoJsonLayer, IconLayer, PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import { H3HexagonLayer, TripsLayer } from "@deck.gl/geo-layers";
 import { AmbientLight, DirectionalLight, LightingEffect, type PickingInfo } from "@deck.gl/core";
+import { SimpleMeshLayer } from "@deck.gl/mesh-layers";
+import { CubeGeometry } from "@luma.gl/engine";
 import type { StyleSpecification } from "maplibre-gl";
 import circle from "@turf/circle";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -17,10 +19,12 @@ import type { H3Row, Hub, WhatIfHub } from "@/lib/types";
 import { approx } from "@/lib/format";
 import { BASEMAP_URL, BEFORE_LABELS, BEFORE_ROADS, BUILDINGS_3D, loadCaspianStyle } from "./map/basemap";
 import { icon } from "./map/symbols";
+import { BUS_DIM, PLAYBACK, buildFleet, updateFleet, type Bus } from "./map/buses";
 import { declutter, square, textW, worldPx, type Box, type Candidate } from "./map/declutter";
 
 export const BASEMAP = BASEMAP_URL;
 export const BAKU_VIEW = { longitude: 49.86, latitude: 40.405, zoom: 11.2, pitch: 0, bearing: 0 };
+const BUS_MESH = new CubeGeometry();
 let mapInstance: MapRef | null = null;
 export const getMap = () => mapInstance;
 
@@ -149,6 +153,9 @@ export default function MapView({ data }: { data: StaticData }) {
     return out;
   }, [routePaths]);
   const loop = 3600;
+  // 3D avtobuslar: real marşrut həndəsəsi + sərnişinə görə park bölgüsü (simulyasiya)
+  const fleet = useMemo(() => buildFleet(data.routes), [data.routes]);
+  const busClock = useRef(performance.now());
 
   useEffect(() => {
     if (s.mode !== "twin") return;
@@ -330,6 +337,10 @@ export default function MapView({ data }: { data: StaticData }) {
     billboard: true,
   };
 
+  const busesNow = twin && zoom >= 14 ? updateFleet(fleet, (performance.now() - busClock.current) / 1000) : [];
+  // orta zoomda avtobuslar vizual böyüdülür (real 12 m avtobus 14–16 zoomda bir neçə pikseldir); küçə səviyyəsində real ölçü
+  const busK = zoom >= 17 ? 1 : zoom >= 16 ? 1.5 : zoom >= 15 ? 2.2 : 3.2;
+
   const layers = [
     // 1) istilik xəritəsi: yolların və yazıların altında
     L.cells &&
@@ -387,6 +398,34 @@ export default function MapView({ data }: { data: StaticData }) {
         autoHighlight: true,
         highlightColor: rgb(C.mpv, 255),
         updateTriggers: { getLineWidth: z },
+      }),
+    twin &&
+      L.routes &&
+      zoom >= 14 &&
+      new SimpleMeshLayer<Bus>({
+        id: "bus-body",
+        data: busesNow,
+        mesh: BUS_MESH,
+        getOrientation: (b) => [0, b.yaw, 0],
+        getPosition: (b) => [b.position[0], b.position[1], (BUS_DIM.hgt / 2) * busK],
+        getScale: [(BUS_DIM.len / 2) * busK, (BUS_DIM.wid / 2) * busK, (BUS_DIM.hgt / 2) * busK],
+        getColor: rgb("#2F7FD0"),
+        material: { ambient: 0.55, diffuse: 0.65, shininess: 60, specularColor: [200, 220, 255] },
+        updateTriggers: { getPosition: [time, busK], getOrientation: time, getScale: busK },
+      }),
+    twin &&
+      L.routes &&
+      zoom >= 14 &&
+      new SimpleMeshLayer<Bus>({
+        id: "bus-windows",
+        data: busesNow,
+        mesh: BUS_MESH,
+        getPosition: (b) => [b.position[0], b.position[1], BUS_DIM.hgt * 0.68 * busK],
+        getOrientation: (b) => [0, b.yaw, 0],
+        getScale: [(BUS_DIM.len / 2 + 0.03) * busK, (BUS_DIM.wid / 2 + 0.03) * busK, BUS_DIM.hgt * 0.17 * busK],
+        getColor: rgb("#0B1A24"),
+        material: { ambient: 0.4, diffuse: 0.3, shininess: 120, specularColor: [255, 255, 255] },
+        updateTriggers: { getPosition: [time, busK], getOrientation: time, getScale: busK },
       }),
     twin &&
       L.routes &&
@@ -766,7 +805,7 @@ export default function MapView({ data }: { data: StaticData }) {
         style,
       };
     }
-    if (id === "rail") return { html: `${head(C.rail, "Elektrik qatarı stansiyası (ADY)", railName(p))}${p.n_routes != null ? sub(`Marşrut sayı: ${p.n_routes}`) : ""}`, style };
+    if (id === "rail") return { html: `${head(C.rail, "Elektrik qatarı stansiyası (ADY)", railName(p))}${p.n_routes != null ? sub(`Xətt: ${p.n_routes}${p.n_trips != null ? ` · reys: ${p.n_trips}` : ""}`) : ""}`, style };
     if (id === "whatif") return { html: `${head("#FFFFFF", "Sizin hub", "Yoxlanılan nöqtə")}`, style };
     return null;
   }, []);
@@ -798,6 +837,11 @@ export default function MapView({ data }: { data: StaticData }) {
         if (useStore.getState().mode === "twin") m.setLayoutProperty(BUILDINGS_3D.id, "visibility", "visible");
       }}
     >
+      {twin && L.routes && (
+        <div className="pointer-events-none absolute bottom-48 left-1/2 z-10 -translate-x-1/2 rounded bg-[var(--surface)]/90 px-3 py-1.5 text-[11px] text-[var(--muted)] ring-1 ring-[var(--line)]">
+          Avtobuslar: simulyasiya · AYNA-nın real marşrutları, ~2 350 avtobus sərnişin payına görə · {PLAYBACK}× sürətləndirilmiş
+        </div>
+      )}
       <DeckOverlay
         interleaved
         layers={layers}

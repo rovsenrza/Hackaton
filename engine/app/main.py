@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT.parent / "pipeline"))  # lokal inkişaf: ortaq modul
 from hubcore import HUB_WALK_M, load_core  # noqa: E402
 
 from db import STATUSES, Hub, engine, init_db  # noqa: E402
+import live  # noqa: E402
 
 DATA = Path(os.environ.get("AYAN_DATA", ROOT / "data"))
 TO_UTM = Transformer.from_crs(4326, 32639, always_xy=True)
@@ -195,3 +196,18 @@ def export_geojson(status: str | None = None):
         feats = [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [h.lon, h.lat]},
                   "properties": {k: v for k, v in h.as_dict().items() if k not in ("lon", "lat")}} for h in q]
     return {"type": "FeatureCollection", "features": feats}
+
+
+# --- canlı gəlişlər (AYNA MaaS SIRI) ------------------------------------------------
+STOP_XY = np.c_[core.stops.geometry.x, core.stops.geometry.y]
+
+
+@app.get("/live/near")
+def live_near(lon: float, lat: float, radius: float = 300):
+    if not live.enabled():
+        return {"enabled": False, "stops": [], "has_live": False}
+    x, y = TO_UTM.transform(lon, lat)
+    d = np.hypot(STOP_XY[:, 0] - x, STOP_XY[:, 1] - y)
+    idx = [i for i in np.argsort(d)[:4] if d[i] <= radius]
+    stops = [{"code": str(core.stops.code.iat[i]), "name": str(core.stops["name"].iat[i]), "dist_m": round(float(d[i]))} for i in idx]
+    return {"enabled": True, **live.arrivals(stops)}
