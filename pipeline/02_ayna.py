@@ -60,6 +60,8 @@ def pattern_points(p) -> str | None:
 
 
 norm = lambda s: re.sub(r"\s+", "", str(s)).upper()
+# AYNA API adlarında azərbaycan "ə" (U+0259) əvəzinə kiril "ә" (U+04D9) işlənib (Data keyfiyyət mərkəzinin tapıntısı)
+az = lambda s: str(s).replace("\u04d9", "ə").replace("\u04d8", "Ə") if s is not None else s
 
 # --- 1. Marşrutlar və dayanacaq ardıcıllıqları ---------------------------------
 rows, rs_rows = [], []
@@ -75,7 +77,7 @@ for r in routes_raw:
                 lines.append(LineString(c))
     for s in r.get("stops") or []:
         lon, lat = s["geometries"]["geoJson"]["coordinates"]
-        rs_rows.append({"route": norm(name), "long": r.get("longName") or name, "kind": kind, "code": s["code"], "name": s["name"], "lon": lon, "lat": lat,
+        rs_rows.append({"route": norm(name), "long": r.get("longName") or name, "kind": kind, "code": s["code"], "name": az(s["name"]), "lon": lon, "lat": lat,
                         "seq": int(s.get("sequenceNumber") or 0), "hub": bool(s.get("hub"))})
     if kind == "city_bus" and lines:
         rows.append({"route": norm(name), "long_name": r.get("longName"), "operator": r.get("operatorName"),
@@ -113,6 +115,7 @@ rail.to_file(BUILD / "rail_stations.gpkg")
 
 # --- 4. Rəsmi Nəqliyyat Mübadilə Mərkəzləri (stop.hub = true), 300 m klasterləşmə ------------
 hs = pd.DataFrame([s for s in stops_raw if s.get("hub")])
+hs["name"] = hs["name"].map(az)
 hg = gpd.GeoDataFrame(hs, geometry=gpd.points_from_xy(hs.lon, hs.lat), crs=WGS84).to_crs(UTM)
 lab = -np.ones(len(hg), int)
 for i in range(len(hg)):
