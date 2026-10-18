@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>AYAN — 10s</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="assets/data.js"></script>
+    <style>
+      /* Archivo variable (wdth 62–125), same family the web app loads via next/font */
+      @font-face {
+        font-family: "Archivo";
+        src: url("assets/fonts/archivo-latin-ext-wdth-normal.woff2") format("woff2");
+        font-weight: 100 900;
+        font-stretch: 62% 125%;
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+20A0-20AB, U+20AD-20C0, U+2C60-2C7F, U+A720-A7FF;
+      }
+      @font-face {
+        font-family: "Archivo";
+        src: url("assets/fonts/archivo-latin-wdth-normal.woff2") format("woff2");
+        font-weight: 100 900;
+        font-stretch: 62% 125%;
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2212, U+FEFF;
+      }
+
+      /* design tokens: web/src/app/globals.css + web/src/lib/theme.ts */
+      :root {
+        --bg: #0f2430;
+        --surface: #16313f;
+        --surface2: #1d3e4f;
+        --line: #2a5163;
+        --text: #e8eef0;
+        --muted: #8fa6b2;
+        --metro: #d6403a;
+        --bus: #3d8fd6;
+        --bike: #3cb37a;
+        --mps: #2e9a63;
+        --mpv: #9be3b8;
+        --hub: #f2a93b;
+        --upgrade: #c9a0ff;
+        --integrate: #4fd2d9;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+      #root {
+        position: relative; width: 100%; height: 100%; overflow: hidden;
+        background: var(--bg); color: var(--text);
+        font-family: "Archivo", system-ui, sans-serif;
+        font-variant-numeric: tabular-nums;
+      }
+      .clip { position: absolute; inset: 0; }
+      .display { font-stretch: 88%; letter-spacing: -0.01em; font-weight: 700; }
+
+      #vignette {
+        position: absolute; inset: 0; pointer-events: none;
+        background: radial-gradient(120% 90% at 62% 52%, rgba(15, 36, 48, 0) 45%, rgba(8, 20, 27, 0.85) 100%);
+      }
+      #cam { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+      #map { position: absolute; inset: 0; width: 1920px; height: 1080px; overflow: visible; }
+
+      /* left column copy */
+      #copy { position: absolute; left: 120px; top: 0; bottom: 0; width: 600px; display: flex; flex-direction: column; justify-content: center; }
+      .mask { overflow: hidden; padding-bottom: 0.08em; }
+      .mask > * { display: block; }
+      .stack { position: relative; }
+      .stack > .layer { position: absolute; left: 0; top: 0; width: 100%; }
+      .stack > .layer:first-child { position: relative; }
+      .eyebrow { display: flex; align-items: center; gap: 12px; font-size: 22px; color: var(--muted); font-weight: 500; }
+      .swatch { width: 44px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, rgba(164,46,140,.6), rgba(226,88,150,.9), rgb(250,172,182)); }
+      .swatch.hub { width: 14px; height: 14px; border-radius: 50%; background: var(--bg); border: 3px solid var(--hub); }
+      .big { font-size: 208px; line-height: 0.92; margin-top: 18px; padding-bottom: 0.14em; }
+      .big .u { font-size: 0.5em; margin-left: 6px; color: var(--muted); font-weight: 600; }
+      .sub { font-size: 32px; line-height: 1.25; max-width: 540px; font-weight: 450; }
+      .src { font-size: 17px; color: var(--muted); }
+      .gap-sub { margin-top: 22px; } .gap-src { margin-top: 18px; }
+
+      /* hub stations (HubLine circles) */
+      #stations { position: absolute; inset: 0; }
+      .st {
+        position: absolute; width: 44px; height: 44px; margin: -22px 0 0 -22px;
+        border-radius: 50%; border: 4px solid var(--hub); background: var(--bg);
+        display: grid; place-items: center; font-size: 16px; font-weight: 700; color: var(--text);
+        box-shadow: 0 0 0 4px rgba(15, 36, 48, 0.55);
+      }
+      .st.upgrade { border-color: var(--upgrade); }
+      .st.integrate { border-color: var(--integrate); }
+
+      /* HubLine panel */
+      #panel {
+        position: absolute; left: 120px; right: 120px; top: 388px; height: 336px;
+        border-radius: 8px; background: rgba(22, 49, 63, 0.95);
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35), inset 0 0 0 1px var(--line);
+      }
+      #panel-head { position: absolute; left: 48px; right: 48px; top: 36px; display: flex; justify-content: space-between; align-items: baseline; }
+      #panel-head h2 { font-size: 26px; font-weight: 600; }
+      #panel-head p { font-size: 19px; color: var(--muted); }
+      #panel-head b { color: var(--text); font-weight: 600; }
+      #legend { position: absolute; left: 48px; bottom: 34px; display: flex; gap: 32px; font-size: 17px; color: var(--muted); }
+      #legend span { display: flex; align-items: center; gap: 10px; }
+      #legend i { width: 12px; height: 12px; border-radius: 50%; border: 3px solid var(--hub); }
+      #segs { position: absolute; inset: 0; }
+      .seg { position: absolute; height: 10px; border-radius: 0; opacity: 0.85; }
+      .pct { position: absolute; width: 80px; margin-left: -40px; text-align: center; font-size: 17px; color: var(--muted); }
+      .pct.last { color: var(--hub); font-weight: 700; }
+
+      /* lockup */
+      #lockup { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+      #word { font-size: 236px; line-height: 1; font-weight: 800; letter-spacing: -0.02em; display: flex; }
+      #word .ch { display: block; font-stretch: 125%; }
+      #tag { margin-top: 92px; font-size: 32px; color: var(--muted); font-weight: 450; }
+      #tag b { color: var(--text); font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="10" data-width="1920" data-height="1080">
+      <!-- the city, drawn from AYAN's own data layers -->
+      <section id="city" class="clip" data-start="0" data-duration="10" data-track-index="0">
+        <div id="cam">
+          <svg id="map" viewBox="0 0 1920 1080">
+            <defs>
+              <radialGradient id="g-reveal">
+                <stop offset="0.72" stop-color="#fff" />
+                <stop offset="1" stop-color="#000" />
+              </radialGradient>
+              <mask id="m-city" maskUnits="userSpaceOnUse" x="-400" y="-400" width="2720" height="1880">
+                <circle id="reveal" cx="1160" cy="600" r="0" fill="url(#g-reveal)" />
+              </mask>
+              <mask id="m-heat" maskUnits="userSpaceOnUse" x="-400" y="-400" width="2720" height="1880">
+                <rect x="-400" y="-400" width="2720" height="1880" fill="#fff" />
+                <g id="heat-cut"></g>
+              </mask>
+            </defs>
+            <g mask="url(#m-city)">
+              <g id="routes" fill="none" stroke="#3D8FD6" stroke-linecap="round" stroke-linejoin="round"></g>
+              <g mask="url(#m-heat)"><g id="heat" opacity="0.62"></g></g>
+              <path id="p-mps" fill="none" stroke="#2E9A63" stroke-width="5" stroke-linecap="round" />
+              <path id="p-mpv" fill="none" stroke="#9BE3B8" stroke-width="4" stroke-linecap="round" />
+              <path id="p-metro" fill="none" stroke="#D6403A" stroke-width="7" stroke-linecap="round" />
+            </g>
+            <g id="iso"></g>
+            <g id="ripples" fill="none"></g>
+          </svg>
+        </div>
+        <div id="vignette"></div>
+      </section>
+
+      <!-- left column: beat 1 problem → beat 2 answer -->
+      <section id="copy-clip" class="clip" data-start="0" data-duration="6.2" data-track-index="1">
+        <div id="copy" data-layout-allow-occlusion>
+          <div class="mask stack" data-layout-allow-overflow>
+            <div class="layer"><div class="eyebrow e1"><span class="swatch"></span>Xidmət olunmamış tələbat</div></div>
+            <div class="layer"><div class="eyebrow e2"><span class="swatch hub"></span>İlk 20 hub · MCLP sırası</div></div>
+          </div>
+          <div class="mask stack" data-layout-allow-overflow>
+            <div class="layer"><div class="big display n1"><span id="n1">0,0</span><span class="u">%</span></div></div>
+            <div class="layer"><div class="big display n2"><span id="n2">0,0</span><span class="u">%</span></div></div>
+          </div>
+          <div class="stack gap-sub">
+            <div class="layer"><div class="mask" data-layout-allow-overflow><p class="sub s1">sakinin 5 dəqiqəlik piyada məsafəsində velo/scooter parkinqi yoxdur</p></div></div>
+            <div class="layer"><div class="mask" data-layout-allow-overflow><p class="sub s2">xidmətsiz tələbat bağlanır. Hər hub real piyada şəbəkəsi ilə seçilir</p></div></div>
+          </div>
+          <div class="stack gap-src">
+            <div class="layer"><div class="mask" data-layout-allow-overflow><p class="src r1">2 065 000 sakin · WorldPop 2026 + AYNA parkinqləri</p></div></div>
+            <div class="layer"><div class="mask" data-layout-allow-overflow><p class="src r2">Maksimal əhatə modeli · nəqliyyat 45% · əhali 35% · cazibə 20%</p></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HubLine: the app's build-sequence component -->
+      <section id="line-clip" class="clip" data-start="5.4" data-duration="4.6" data-track-index="2">
+        <div id="panel">
+          <div id="panel-head">
+            <h2>Tikinti ardıcıllığı</h2>
+            <p>İlk 20 hub xidmətsiz tələbatın <b>12,1%</b>-ni bağlayır · ≈12 300 sakin ilk dəfə 5 dəqiqəlik çıxış qazanır</p>
+          </div>
+          <div id="legend">
+            <span><i></i>Yeni hub</span>
+            <span><i style="border-color: var(--upgrade)"></i>Parkinqin hub-a çevrilməsi</span>
+            <span><i style="border-color: var(--integrate)"></i>AYNA mübadilə mərkəzinə inteqrasiya</span>
+          </div>
+        </div>
+        <div id="segs"></div>
+      </section>
+
+      <section id="lockup-clip" class="clip" data-start="8.1" data-duration="1.9" data-track-index="3">
+        <div id="lockup">
+          <div id="word" class="mask" data-layout-allow-overflow><span class="ch">A</span><span class="ch">Y</span><span class="ch">A</span><span class="ch">N</span></div>
+          <p id="tag" class="mask" data-layout-allow-overflow><span><b>Mobility hub planlayıcısı</b> · Bakının rəqəmsal əkizi</span></p>
+        </div>
+      </section>
+
+      <!-- stations live above everything: they travel map → line → mark -->
+      <section id="stations-clip" class="clip" data-start="2.4" data-duration="7.6" data-track-index="4">
+        <div id="stations" data-layout-allow-overlap data-layout-allow-occlusion></div>
+      </section>
+    </div>
+
+    <script>
+      const A = window.AYAN;
+      const NS = "http://www.w3.org/2000/svg";
+      const $ = (id) => document.getElementById(id);
+      const COL = { new: "#F2A93B", upgrade: "#C9A0FF", integrate: "#4FD2D9" };
+      const HEAT = { 2: "rgba(112,40,128,.13)", 3: "rgba(164,46,140,.31)", 4: "rgba(226,88,150,.57)", 5: "rgba(250,172,182,.82)" };
+      const svgEl = (tag, attrs, parent) => {
+        const e = document.createElementNS(NS, tag);
+        for (const k in attrs) e.setAttribute(k, attrs[k]);
+        parent.appendChild(e);
+        return e;
+      };
+      const comma = (v, d = 1) => v.toFixed(d).replace(".", ",");
+
+      // ---- build static scene (end-state DOM), then animate from it ----
+      for (const c of [2, 3, 4, 5]) svgEl("path", { d: A.heat[c].join(""), fill: HEAT[c], class: "heat-c" + c }, $("heat"));
+      const routeEls = A.routes.map((r, i) =>
+        svgEl("path", { d: r.d, pathLength: 1, "stroke-dasharray": "1 1", "stroke-dashoffset": 1,
+          "stroke-width": i < 20 ? 2 : 1.3, opacity: i < 20 ? 0.55 : 0.32 }, $("routes")));
+      $("p-mps").setAttribute("d", A.parkMPS);
+      $("p-mpv").setAttribute("d", A.parkMPV);
+      $("p-metro").setAttribute("d", A.metro);
+
+      // HubLine geometry (video-scale version of web/src/components/HubLine.tsx)
+      const LX0 = 200, STEP = 80, LY = 556;
+      const maxGain = Math.max(...A.hubs.map((h) => h.gain));
+      const cutEls = [], isoEls = [], ripEls = [], stEls = [], segEls = [], pctEls = [];
+      A.hubs.forEach((h, i) => {
+        const col = COL[h.action];
+        cutEls.push(svgEl("path", { d: h.iso, fill: "#000" }, $("heat-cut")));
+        isoEls.push(svgEl("path", { d: h.iso, fill: col, "fill-opacity": 0.1, stroke: col, "stroke-width": 1.6, "stroke-opacity": 0.8 }, $("iso")));
+        ripEls.push(svgEl("circle", { cx: h.x, cy: h.y, r: 14, stroke: col, "stroke-width": 2, opacity: 0 }, $("ripples")));
+        const st = document.createElement("div");
+        st.className = "st " + h.action;
+        st.style.left = h.x + "px";
+        st.style.top = h.y + "px";
+        st.textContent = h.rank;
+        st.style.zIndex = 100 - h.rank; // real neighbours (e.g. #2/#9 are 18 px apart): higher priority on top
+        st.setAttribute("data-layout-allow-occlusion", "");
+        $("stations").appendChild(st);
+        stEls.push(st);
+        const lx = LX0 + i * STEP;
+        if (i < A.hubs.length - 1) {
+          const th = 2 * (3 + (h.gain / maxGain) * 7);
+          const s = document.createElement("div");
+          s.className = "seg";
+          Object.assign(s.style, { left: lx + "px", width: STEP + "px", top: LY - th / 2 + "px", height: th + "px", background: col });
+          $("segs").appendChild(s);
+          segEls.push(s);
+        }
+        const p = document.createElement("div");
+        p.className = "pct" + (i === A.hubs.length - 1 ? " last" : "");
+        Object.assign(p.style, { left: lx + "px", top: LY + 36 + "px" });
+        p.textContent = comma(h.closed * 100) + "%";
+        $("segs").appendChild(p);
+        pctEls.push(p);
+      });
+
+      // ---- timeline ----
+      const tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+      const n1 = $("n1"), n2 = $("n2");
+
+      // BEAT 1 · 0.0–2.4 — the city assembles itself from data, camera settles
+      tl.fromTo("#cam", { scale: 1.16, x: -60, y: 30, rotation: -1.2 }, { scale: 1, x: 0, y: 0, rotation: 0, duration: 2.7, ease: "power3.inOut", transformOrigin: "1160px 600px" }, 0);
+      tl.to("#reveal", { attr: { r: 1650 }, duration: 2.3, ease: "power2.inOut" }, 0);
+      routeEls.forEach((el, i) => tl.to(el, { attr: { "stroke-dashoffset": 0 }, duration: 1.3, ease: "power2.inOut" }, 0.05 + (i / routeEls.length) * 0.9));
+      tl.from(["#p-metro", "#p-mps", "#p-mpv"], { opacity: 0, duration: 0.8, stagger: 0.12, ease: "power1.out" }, 0.9);
+      tl.from(".heat-c5", { opacity: 0, duration: 1.0, ease: "power1.inOut" }, 0.55);
+
+      tl.from(".e1", { yPercent: 110, duration: 0.7, ease: "expo.out" }, 0.25);
+      tl.from(".n1", { yPercent: 100, duration: 0.9, ease: "expo.out" }, 0.35);
+      const c1 = { v: 0 };
+      tl.to(c1, { v: 71.5, duration: 1.7, ease: "power3.out", onUpdate: () => (n1.textContent = comma(c1.v)) }, 0.4);
+      tl.from(".s1", { yPercent: 105, duration: 0.8, ease: "expo.out" }, 0.75);
+      tl.from(".r1", { yPercent: 110, duration: 0.7, ease: "expo.out" }, 0.95);
+
+      // BEAT 2 · 2.4–5.4 — 20 hubs land in MCLP order; their walk zones erase the gap
+      const out = { yPercent: -140, duration: 0.45, ease: "power2.in" };
+      tl.to(".e1", out, 2.3).to(".n1", out, 2.34).to(".s1", out, 2.38).to(".r1", out, 2.42);
+      tl.fromTo(".e2", { yPercent: 110 }, { yPercent: 0, duration: 0.7, ease: "expo.out" }, 2.62);
+      tl.fromTo(".n2", { yPercent: 100 }, { yPercent: 0, duration: 0.8, ease: "expo.out" }, 2.66);
+      tl.fromTo(".s2", { yPercent: 105 }, { yPercent: 0, duration: 0.7, ease: "expo.out" }, 2.72);
+      tl.fromTo(".r2", { yPercent: 110 }, { yPercent: 0, duration: 0.7, ease: "expo.out" }, 2.8);
+
+      const c2 = { v: 0 };
+      const setN2 = () => (n2.textContent = comma(c2.v));
+      const land = (i) => 2.55 + 2.5 * Math.pow(i / 19, 1.45); // deliberate first landings, then a cascade
+      A.hubs.forEach((h, i) => {
+        const t = land(i);
+        const o = `${h.x} ${h.y}`;
+        tl.fromTo(stEls[i], { scale: 0, opacity: 0 }, { scale: 0.8, opacity: 1, duration: 0.55, ease: "back.out(2.4)" }, t);
+        tl.fromTo(ripEls[i], { attr: { r: 14 }, opacity: 0.9 }, { attr: { r: 80 }, opacity: 0, duration: 0.9, ease: "expo.out", immediateRender: false }, t + 0.04);
+        tl.fromTo(isoEls[i], { scale: 0.2, opacity: 0, svgOrigin: o }, { scale: 1, opacity: 1, duration: 0.8, ease: "expo.out", svgOrigin: o }, t + 0.02);
+        tl.fromTo(cutEls[i], { scale: 0, svgOrigin: o }, { scale: 1, duration: 0.9, ease: "expo.out", svgOrigin: o }, t + 0.02);
+        tl.to(c2, { v: h.closed * 100, duration: 0.3, ease: "power2.out", onUpdate: setN2 }, t);
+      });
+
+      // BEAT 3 · 5.4–8.0 — map recedes; stations fly onto the HubLine
+      tl.to(".e2", out, 5.3).to(".n2", out, 5.34).to(".s2", out, 5.38).to(".r2", out, 5.42);
+      tl.to("#cam", { scale: 1.07, opacity: 0.2, filter: "blur(3px)", duration: 1.6, ease: "power2.inOut", transformOrigin: "1160px 600px" }, 5.35);
+      tl.to(["#iso", "#ripples"], { opacity: 0, duration: 0.5, ease: "power1.in" }, 5.4);
+      tl.fromTo("#panel", { opacity: 0, y: 40, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: "expo.out" }, 5.75);
+      tl.from(["#panel-head h2", "#panel-head p"], { opacity: 0, y: 14, duration: 0.6, stagger: 0.08 }, 6.3);
+      tl.from("#legend span", { opacity: 0, y: 10, duration: 0.5, stagger: 0.06 }, 6.9);
+      A.hubs.forEach((h, i) => {
+        const t = 5.55 + i * 0.035;
+        const dx = LX0 + i * STEP - h.x, dy = LY - h.y;
+        // different eases on x and y bend each path into a soft arc
+        tl.to(stEls[i], { x: dx, duration: 1.05, ease: "power2.inOut" }, t);
+        tl.to(stEls[i], { y: dy, duration: 1.05, ease: "power4.inOut" }, t);
+        tl.to(stEls[i], { scale: 1, duration: 1.05, ease: "power2.inOut" }, t);
+      });
+      segEls.forEach((s, i) => tl.from(s, { scaleX: 0, transformOrigin: "0% 50%", duration: 0.16, ease: "none" }, 6.55 + i * 0.045));
+      pctEls.forEach((p, i) => tl.from(p, { opacity: 0, y: -8, duration: 0.35 }, 6.6 + i * 0.045));
+
+      // BEAT 4 · 8.0–10 — the line condenses into the mark
+      tl.to(["#panel", ...pctEls], { opacity: 0, duration: 0.45, ease: "power2.in" }, 7.95);
+      stEls.forEach((st, i) => {
+        const fromCenter = Math.abs(i - 9.5);
+        tl.to(st, { scale: 0, opacity: 0, duration: 0.4, ease: "power2.in" }, 7.95 + (9.5 - fromCenter) * 0.012);
+      });
+      tl.to("#segs", { scaleX: 0.15, y: 36, transformOrigin: "960px 556px", duration: 0.9, ease: "expo.inOut" }, 8.0);
+      // even out the gain-weighted strokes into one clean four-colour rule
+      tl.to(segEls, { scaleY: (i, el) => 8 / parseFloat(el.style.height), opacity: 1, duration: 0.7, ease: "expo.inOut" }, 8.05);
+      tl.to("#cam", { opacity: 0.1, duration: 1.2, ease: "power2.inOut" }, 8.0);
+      tl.fromTo("#word .ch", { yPercent: 105 }, { yPercent: 0, duration: 0.9, stagger: 0.06, ease: "expo.out" }, 8.3);
+      tl.fromTo("#word .ch", { fontStretch: "125%" }, { fontStretch: "88%", duration: 1.3, stagger: 0.06, ease: "expo.out" }, 8.3);
+      tl.fromTo("#tag span", { yPercent: 110 }, { yPercent: 0, duration: 0.8, ease: "expo.out" }, 8.7);
+
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

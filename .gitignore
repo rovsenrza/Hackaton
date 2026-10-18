@@ -12,3 +12,7 @@ engine/.env
 docs/AYNA-MAAS-API.md
 docs/APAR-TRIPY-API.md
 datas/apar_token.txt
+
+# HyperFrames: snapshots and renders are regenerated
+videos/*/.hyperframes/
+videos/*/renders/
