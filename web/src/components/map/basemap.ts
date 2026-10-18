@@ -1,4 +1,4 @@
-// "Xəzər" baza xəritəsi: OpenFreeMap fiord üslubu (OSM, açarsız) işləmə vaxtında yenidən rənglənir.
+// Açıq "kart kağızı" baza xəritəsi: OpenFreeMap fiord üslubu (OSM, açarsız) işləmə vaxtında yenidən rənglənir.
 // Məqsəd: sakit fon, aydın sahil xətti, oxunaqlı rayon və əsas küçə adları (azərbaycanca),
 // analitik qatlar üçün yüksək kontrast.
 import type { LayerSpecification, StyleSpecification } from "maplibre-gl";
@@ -10,22 +10,22 @@ export const BEFORE_ROADS = "tunnel_motorway_casing"; // istilik xəritəsi yoll
 export const BEFORE_LABELS = "water_name"; // xətlər yazıların altında
 
 const K = {
-  land: "#132B38",
-  water: "#0A1A23",
-  coast: "#2C5A6C",
-  urban: "#183343",
-  park: "#163A36",
-  wood: "#15332F",
-  building: "#1C3949",
-  minor: "#1F3E4D",
-  major: "#2B5061",
-  motorway: "#35606F",
-  rail: "#5F717A",
-  halo: "#0F2430",
-  district: "#A9C0CA",
-  neighbourhood: "#7593A0",
-  street: "#86A0AB",
-  waterLabel: "#4F8396",
+  land: "#EDF1F5",
+  water: "#C6D6E6",
+  coast: "#A9BFD4",
+  urban: "#E4E9EF",
+  park: "#DCE9DF",
+  wood: "#D3E4D7",
+  building: "#DDE3EA",
+  minor: "#FFFFFF",
+  major: "#FFFFFF",
+  motorway: "#FFFFFF",
+  rail: "#A3AEBA",
+  halo: "#F5F7FA",
+  district: "#33445A",
+  neighbourhood: "#66758A",
+  street: "#76849A",
+  waterLabel: "#557BA6",
 };
 
 const NAME: unknown = ["coalesce", ["get", "name:az"], ["get", "name"]];
@@ -58,7 +58,7 @@ const PATCH: Record<string, Patch> = {
   landcover_wood: { paint: { "fill-color": K.wood, "fill-opacity": lin(9, 0, 12, 0.8) } },
   park: { paint: { "fill-color": K.park, "fill-opacity": 0.75 } },
   waterway: { paint: { "line-color": K.water, "line-opacity": 1 } },
-  building: { minzoom: 13, paint: { "fill-color": K.building, "fill-opacity": lin(13, 0, 14.5, 0.9), "fill-antialias": true, "fill-outline-color": "#21414F" } },
+  building: { minzoom: 13, paint: { "fill-color": K.building, "fill-opacity": lin(13, 0, 14.5, 0.9), "fill-antialias": true, "fill-outline-color": "#CBD3DD" } },
   "aeroway-area": { paint: { "fill-color": K.minor, "fill-opacity": 0.8 } },
   "aeroway-runway": { paint: { "line-color": K.minor } },
   "aeroway-runway-casing": { paint: { "line-color": K.minor } },
@@ -86,7 +86,7 @@ const PATCH: Record<string, Patch> = {
     layout: { "text-field": NAME, "text-transform": "none", "text-size": lin(13.5, 9.5, 17, 12), "text-font": ["Noto Sans Regular"], "symbol-spacing": 420, "text-letter-spacing": 0.02 },
     paint: { ...textBase, "text-color": K.street, "text-opacity": lin(13.5, 0, 14, 1) },
   },
-  "boundary_country_z5-": { paint: { "line-color": "#3E6475", "line-opacity": 0.6 } },
+  "boundary_country_z5-": { paint: { "line-color": "#9FB0C2", "line-opacity": 0.6 } },
   place_other: {
     minzoom: 13,
     layout: { "text-field": NAME, "text-size": 10, "text-letter-spacing": 0.08, "text-font": ["Noto Sans Regular"] },
@@ -121,7 +121,7 @@ export const BUILDINGS_3D: LayerSpecification = {
   paint: {
     "fill-extrusion-color": [
       "interpolate", ["linear"], ["coalesce", ["get", "render_height"], 9],
-      0, "#1E3C4B", 20, "#28505F", 60, "#3A6A7B", 140, "#5A8E9E",
+      0, "#E7EBF0", 20, "#D9DFE7", 60, "#C4CEDA", 140, "#A8B8CC",
     ],
     "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 13, 0, 14, ["coalesce", ["get", "render_height"], 9]],
     "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
@@ -151,9 +151,9 @@ function transform(style: StyleSpecification): StyleSpecification {
     ...style,
     layers,
     sky: {
-      "sky-color": "#0B1D27",
-      "horizon-color": "#1D4354",
-      "fog-color": "#102733",
+      "sky-color": "#D7E3EF",
+      "horizon-color": "#EEF2F6",
+      "fog-color": "#E8EDF3",
       "sky-horizon-blend": 0.6,
       "horizon-fog-blend": 0.7,
       "fog-ground-blend": 0.35,

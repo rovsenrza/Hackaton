@@ -92,7 +92,7 @@ export default function DataRequests({ data }: { data: StaticData }) {
 
   return (
     <section>
-      <h2 className="font-display text-2xl font-bold tracking-tight">Data boşluğu: AYNA-dan tələb olunan datalar</h2>
+      <h2 className="text-[1.6rem] font-extrabold tracking-tight">Data boşluğu: AYNA-dan tələb olunan datalar</h2>
       <p className="mt-1 max-w-3xl text-sm text-[var(--muted)]">
         Model hansı yerdə təxminə əsaslandığını özü göstərir. Kartlar dəqiqliyə təsirinə görə sıralanıb. Tələb axını nümayiş üçündür (mock).
       </p>
@@ -100,7 +100,7 @@ export default function DataRequests({ data }: { data: StaticData }) {
         {REQS.map((r) => {
           const s = st[r.id] ?? "yox";
           return (
-            <li key={r.id} className="flex flex-col rounded-md bg-[var(--surface)] p-4 ring-1 ring-[var(--line)]">
+            <li key={r.id} className="flex flex-col ayan-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <p className="font-semibold leading-snug">{r.title}</p>
                 <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] ${r.priority === 1 ? "bg-[var(--metro)]/20 text-[var(--metro)]" : r.priority === 2 ? "bg-[var(--hub)]/20 text-[var(--hub)]" : "bg-[var(--surface2)] text-[var(--muted)]"}`}>
@@ -114,8 +114,8 @@ export default function DataRequests({ data }: { data: StaticData }) {
               </dl>
               <div className="mt-auto flex gap-2 pt-3">
                 <button onClick={() => advance(r.id)} disabled={s === "qoşuldu"}
-                  className={`flex-1 rounded px-3 py-1.5 text-sm font-semibold ${s === "yox" ? "bg-[var(--hub)] text-[var(--bg)]" : "border border-[var(--line)] text-[var(--text)]"} disabled:opacity-60`}>
-                  {s === "yox" ? LABEL.yox : `${LABEL[s]}${s !== "qoşuldu" ? " ›" : ""}`}
+                  className={`flex-1 rounded px-3 py-1.5 text-sm font-semibold ${s === "yox" ? "bg-[var(--hub)] text-[var(--on-accent)]" : "border border-[var(--line)] text-[var(--text)]"} disabled:opacity-60`}>
+                  {s === "yox" ? LABEL.yox : LABEL[s]}{s !== "yox" && s !== "qoşuldu" && <svg aria-hidden viewBox="0 0 16 16" className="ml-1 inline h-3 w-3 align-[-1px]"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                 </button>
                 <button onClick={() => template(r)} className="rounded border border-[var(--line)] px-3 py-1.5 text-sm hover:bg-[var(--surface2)]">CSV şablonu</button>
               </div>

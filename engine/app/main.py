@@ -63,6 +63,7 @@ def poly_ll(poly):
 def _startup():
     seed = json.loads((DATA / "hubs_seed.json").read_text()) if (DATA / "hubs_seed.json").exists() else []
     init_db(seed)
+    apar.warm()
 
 
 @app.get("/health")

@@ -2,7 +2,8 @@
 
 - JWT yalnız mühit dəyişənindən oxunur (APAR_JWT_TOKEN); koda və brauzerə düşmür.
 - Bütün Bakı bbox-u bir sorğuda yüklənir və 30 s keşlənir: hər /evaluate çağırışı yeni
-  şəbəkə sorğusu açmır.
+  şəbəkə sorğusu açmır. Keş arxa planda yenilənir, sorğu heç vaxt şəbəkəni gözləmir
+  (what-if gecikməsi Apar-dan asılı olmasın).
 - Refresh-token axını təsdiqlənməyib (bax: docs/APAR-TRIPY-API.md "Known gaps"), ona görə
   token vaxtı bitəndə əl ilə yenilənməlidir (7 gün ömür).
 - Cavab strukturu vendor tərəfindən sənədləşdirilmir, ona görə parser müdafiəlidir.
@@ -12,6 +13,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -24,17 +26,15 @@ CENTER_LAT, CENTER_LON = 40.3777, 49.892  # hər çağırışda tələb olunan "
 TTL = 30
 
 _cache: tuple[float, list[dict]] | None = None
+_last_error: str | None = None
+_refreshing = threading.Lock()
 
 
 def enabled() -> bool:
     return bool(os.environ.get("APAR_JWT_TOKEN"))
 
 
-def _fetch() -> list[dict]:
-    global _cache
-    now = time.time()
-    if _cache and now - _cache[0] < TTL:
-        return _cache[1]
+def _download() -> list[dict]:
     qs = urllib.parse.urlencode({
         "southwest_lat": BBOX["sw_lat"], "southwest_lon": BBOX["sw_lon"],
         "northeast_lat": BBOX["ne_lat"], "northeast_lon": BBOX["ne_lon"],
@@ -54,17 +54,40 @@ def _fetch() -> list[dict]:
     )
     with urllib.request.urlopen(req, timeout=8) as r:
         data = json.loads(r.read().decode())
-    vehicles = data if isinstance(data, list) else []
-    _cache = (now, vehicles)
-    return vehicles
+    return data if isinstance(data, list) else []
+
+
+def _refresh() -> None:
+    global _cache, _last_error
+    if not _refreshing.acquire(blocking=False):  # artıq bir yeniləmə gedir
+        return
+    try:
+        _cache = (time.time(), _download())
+        _last_error = None
+    except Exception as e:  # şəbəkə, auth və ya format xətası: köhnə keş qalır
+        _last_error = type(e).__name__
+    finally:
+        _refreshing.release()
+
+
+def warm() -> None:
+    """Engine başlayanda keşi arxa planda doldurur: ilk what-if də gözləmir."""
+    if enabled():
+        threading.Thread(target=_refresh, daemon=True).start()
+
+
+def _fetch() -> list[dict] | None:
+    """Keşi dərhal qaytarır; köhnəlibsə yeniləməni arxa planda başladır. Keş yoxdursa None."""
+    if _cache is None or time.time() - _cache[0] >= TTL:
+        threading.Thread(target=_refresh, daemon=True).start()
+    return _cache[1] if _cache else None
 
 
 def near(lon: float, lat: float, radius_m: float) -> dict:
     """Nöqtənin radius_m ətrafında canlı Apar vasitələri: say, növ/status bölgüsü, orta enerji."""
-    try:
-        vehicles = _fetch()
-    except Exception as e:  # şəbəkə, auth və ya format xətası: kartı sındırmasın
-        return {"has_live": False, "error": type(e).__name__, "count": 0}
+    vehicles = _fetch()
+    if vehicles is None:  # keş hələ dolmayıb və ya mənbə əlçatan deyil: kartı sındırmasın
+        return {"has_live": False, "error": _last_error or "warming", "count": 0}
     m_per_deg_lon = 111_320 * math.cos(math.radians(lat))
     close = [
         v for v in vehicles

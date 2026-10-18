@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { Archivo } from "next/font/google";
+import { Manrope, Montserrat } from "next/font/google";
 import "./globals.css";
 
-const archivo = Archivo({ subsets: ["latin", "latin-ext"], variable: "--font-archivo", axes: ["wdth"] });
+const manrope = Manrope({ subsets: ["latin", "latin-ext"], variable: "--font-manrope" });
+// yalnız AYAN sözişarəsi üçün (loqodakı həndəsi qrotesk)
+const montserrat = Montserrat({ subsets: ["latin", "latin-ext"], weight: ["700"], variable: "--font-montserrat" });
 
 export const metadata: Metadata = {
   title: "AYAN: Bakı hub planlayıcısı",
@@ -12,7 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="az">
-      <body className={`${archivo.variable} antialiased`}>{children}</body>
+      <body className={`${manrope.variable} ${montserrat.variable} antialiased`}>{children}</body>
     </html>
   );
 }

@@ -13,7 +13,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 import { EngineOffline, api, post, type StaticData } from "@/lib/data";
 import { useStore } from "@/lib/store";
-import { ACTION_LABEL, C, GAP_STOPS, actionColor, rgb, type RGBA } from "@/lib/theme";
+import { ACTION_LABEL, C, GAP_STOPS, actionColor, actionStyle, rgb, type RGBA } from "@/lib/theme";
 import type { H3Row, Hub, WhatIfHub } from "@/lib/types";
 import { approx } from "@/lib/format";
 import { BASEMAP_URL, BEFORE_LABELS, BEFORE_ROADS, BUILDINGS_3D, loadCaspianStyle } from "./map/basemap";
@@ -102,10 +102,10 @@ const NO_EFFECTS: LightingEffect[] = [];
 const TWIN_STOPS: RGBA[] = [
   [0, 0, 0, 0],
   [0, 0, 0, 0],
-  [96, 34, 112, 255],
-  [128, 38, 128, 255],
-  [196, 62, 132, 255],
-  [236, 112, 146, 255],
+  [246, 214, 172, 255],
+  [242, 180, 128, 255],
+  [232, 138, 92, 255],
+  [206, 92, 62, 255],
 ];
 /** interleaved rejimdə baza xəritəsinin hansı qatından əvvəl çəkiləcəyi (@deck.gl/mapbox) */
 type Before = { beforeId?: string };
@@ -114,6 +114,7 @@ const HUB_R = { S: 6, M: 7.5, L: 9.5 } as const;
 
 export default function MapView({ data }: { data: StaticData }) {
   const s = useStore();
+  const [tap, setTap] = useState<{ id: number; x: number; y: number; state: "pending" | "ok" | "deny" } | null>(null);
   const [time, setTime] = useState(0);
   const [zoom, setZoom] = useState(BAKU_VIEW.zoom);
   const zoomRef = useRef(BAKU_VIEW.zoom);
@@ -273,6 +274,10 @@ export default function MapView({ data }: { data: StaticData }) {
   const selStation = s.selected?.kind === "station" ? data.hubs.arrival.find((a) => s.selected?.kind === "station" && a.id === s.selected.id) ?? null : null;
   const selHub = selRank == null ? null : hubs.find((h) => h.rank === selRank) ?? null;
   const selColor = selHub ? actionColor(selHub.action) : C.hub;
+  // seçilmiş hub xəritəyə sahib olur: istilik və marşrut fonu sönükləşir
+  const dim = selRank != null ? 0.5 : 1;
+  // seçilməmiş hub-ların alfası (fokus seçilmiş hub-dadır)
+  const hubA = (h: Hub) => (selRank == null || h.rank === selRank ? 255 : 110);
 
   // yenidən optimallaşdırılmış hub seçiləndə izoxron engine-dən gətirilir
   const [optIso, setOptIso] = useState<{ rank: number; geom: GeoJSON.Geometry } | null>(null);
@@ -294,16 +299,22 @@ export default function MapView({ data }: { data: StaticData }) {
     if (!st.placing || !info.coordinate) return;
     const [lon, lat] = info.coordinate as [number, number];
     const key = `u${Date.now()}`;
+    // validator toxunuşu: klik nöqtəsində dalğa; cavab gələndə yaşıl (yerləşdi) və ya qırmızı (rədd)
+    const tapId = Date.now();
+    setTap({ id: tapId, x: info.x, y: info.y, state: "pending" });
+    const settle = (state: "ok" | "deny") => setTap((t) => (t && t.id === tapId ? { ...t, state } : t));
     const offlineCircle = (msg: string) => {
       // ehtiyat rejimi: geodezik 400 m bufer (real izoxron engine tələb edir)
       const geom = circle([lon, lat], 0.4, { steps: 64, units: "kilometers" }).geometry;
       const h = { key, lon, lat, isochrone: geom, offline: true } as unknown as WhatIfHub;
       const cur = useStore.getState();
       cur.set({ whatIf: [...cur.whatIf, h], selected: { kind: "whatif", key }, placing: false, toast: msg });
+      settle("ok");
     };
     if (!st.engineOnline) return offlineCircle("Engine əlçatan deyil: düz xətt buferi göstərilir (real piyada izoxronu deyil)");
     try {
       const r = await post<WhatIfHub>("/evaluate", { lon, lat });
+      settle("ok");
       const h = { ...r, key };
       const cur = useStore.getState();
       cur.set({
@@ -321,9 +332,16 @@ export default function MapView({ data }: { data: StaticData }) {
         useStore.getState().set({ engineOnline: false });
         return offlineCircle("Engine bağlantısı kəsildi: düz xətt buferi göstərilir");
       }
+      settle("deny");
       useStore.getState().set({ toast: (e as Error).message, placing: false });
     }
   }, []);
+
+  useEffect(() => {
+    if (!tap || tap.state === "pending") return;
+    const t = setTimeout(() => setTap(null), 1400);
+    return () => clearTimeout(t);
+  }, [tap]);
 
   const L = s.layers;
 
@@ -336,7 +354,7 @@ export default function MapView({ data }: { data: StaticData }) {
   // mayak sütunları: şəhər miqyasında hündür, küçə miqyasında alçaq və nazik (binaları örtməsin)
   const beaconK = clamp(1 - (z - 13) * 0.32, 0.3, 1);
   const beaconH = (h: Hub) => (BEACON_H[h.type] + (h.rank <= 10 ? 160 : 0)) * beaconK;
-  const routeAlpha = (twin ? 0.45 : 1) * (z < 12 ? 0.62 : z < 14 ? 0.85 : 0.7);
+  const routeAlpha = (twin ? 0.45 : 1) * (z < 12 ? 0.62 : z < 14 ? 0.85 : 0.7) * (selRank != null ? 0.55 : 1);
   const sizeKey = `${z}|${selRank}|${twin}`;
 
   // --- yazıların seçimi (toqquşmasız): prioritet hub > AYNA mərkəzi > avtovağzal > metro > qatar ---
@@ -389,7 +407,7 @@ export default function MapView({ data }: { data: StaticData }) {
     characterSet: "auto" as const,
     fontSettings: { sdf: true, fontSize: 64, buffer: 8, radius: 10 },
     outlineWidth: 4,
-    outlineColor: rgb(C.bg, 235),
+    outlineColor: rgb(C.paper, 240),
     getTextAnchor: "start" as const,
     getAlignmentBaseline: "center" as const,
     billboard: true,
@@ -430,7 +448,7 @@ export default function MapView({ data }: { data: StaticData }) {
         pickable: true,
         autoHighlight: !twin,
         highlightColor: [255, 255, 255, 45],
-        opacity: twin ? clamp(0.9 - (z - 12) * 0.22, 0.5, 0.9) : clamp(0.92 - (z - 12) * 0.4, 0.34, 0.92), // yaxınlaşdıqca küçə konteksti önə çıxır
+        opacity: (twin ? clamp(0.9 - (z - 12) * 0.22, 0.5, 0.9) : clamp(0.92 - (z - 12) * 0.4, 0.34, 0.92)) * dim, // yaxınlaşdıqca küçə konteksti önə çıxır
         material: { ambient: 0.6, diffuse: 0.55, shininess: 12, specularColor: [30, 34, 40] },
         updateTriggers: { getFillColor: [mi, breaks, twin] },
       }),
@@ -454,6 +472,7 @@ export default function MapView({ data }: { data: StaticData }) {
     L.lanes &&
       new GeoJsonLayer<Record<string, unknown>, Before>({
         id: "lanes",
+        opacity: dim,
         data: data.lanes,
         beforeId: BEFORE_LABELS,
         getLineColor: rgb(C.bike, 235),
@@ -496,7 +515,7 @@ export default function MapView({ data }: { data: StaticData }) {
         radiusUnits: "pixels",
         getFillColor: rgb("#FFB020", 235),
         stroked: true,
-        getLineColor: rgb(C.bg, 255),
+        getLineColor: rgb(C.paper, 255),
         lineWidthUnits: "pixels",
         getLineWidth: 1,
         pickable: true,
@@ -529,7 +548,7 @@ export default function MapView({ data }: { data: StaticData }) {
         data: trips,
         getPath: (d: (typeof trips)[number]) => d.path,
         getTimestamps: (d: (typeof trips)[number]) => d.ts,
-        getColor: rgb("#BDE5FF"),
+        getColor: rgb(C.cobalt),
         getWidth: z >= 14 ? 4 : 3,
         widthUnits: "pixels",
         trailLength: 160,
@@ -558,8 +577,8 @@ export default function MapView({ data }: { data: StaticData }) {
     new GeoJsonLayer({
       id: "whatif-iso",
       data: { type: "FeatureCollection", features: s.whatIf.map((h) => ({ type: "Feature", geometry: h.isochrone, properties: { key: h.key } })) } as GeoJSON.FeatureCollection,
-      getFillColor: (f: GeoJSON.Feature) => rgb("#FFFFFF", f.properties?.key === selKey ? 46 : 18),
-      getLineColor: rgb("#FFFFFF", 220),
+      getFillColor: (f: GeoJSON.Feature) => rgb(C.ink, f.properties?.key === selKey ? 34 : 14),
+      getLineColor: rgb(C.ink, 210),
       getLineWidth: 1.6,
       lineWidthUnits: "pixels",
       updateTriggers: { getFillColor: selKey },
@@ -568,10 +587,11 @@ export default function MapView({ data }: { data: StaticData }) {
     L.parkings &&
       new ScatterplotLayer<Pt>({
         id: "parkings",
+        opacity: dim,
         data: parkings,
         getPosition: (d) => d.position,
         getFillColor: (d) => (d.p.ptype === "MPV" ? rgb(C.mpv, z < 12 ? 200 : 240) : rgb(C.mps, z < 12 ? 190 : 235)),
-        getLineColor: rgb(C.bg, 220),
+        getLineColor: rgb(C.paper, 230),
         stroked: z >= 13.5,
         lineWidthUnits: "pixels",
         getLineWidth: 1,
@@ -587,10 +607,11 @@ export default function MapView({ data }: { data: StaticData }) {
     L.stops &&
       new ScatterplotLayer<Pt>({
         id: "stops",
+        opacity: dim,
         data: stops,
         getPosition: (d) => d.position,
         getFillColor: rgb(C.bus, 230),
-        getLineColor: rgb(C.bg, 220),
+        getLineColor: rgb(C.paper, 230),
         stroked: z >= 13.5,
         lineWidthUnits: "pixels",
         getLineWidth: 1,
@@ -703,7 +724,7 @@ export default function MapView({ data }: { data: StaticData }) {
         getPosition: (d) => d.position,
         getText: (d) => d.name,
         getSize: 11,
-        getColor: rgb("#F2A7A2", 255),
+        getColor: rgb(C.metro, 255),
         getPixelOffset: z < 14 ? [11, 0] : [0, -16],
         getTextAnchor: z < 14 ? "start" : "middle",
         updateTriggers: { getPixelOffset: z < 14, getTextAnchor: z < 14 },
@@ -727,8 +748,8 @@ export default function MapView({ data }: { data: StaticData }) {
         id: "hub-sel-halo",
         data: [selHub],
         getPosition: (h) => [h.lon, h.lat, twin ? beaconH(h) : 0],
-        getFillColor: rgb(selColor, 60),
-        getLineColor: rgb("#FFFFFF", 240),
+        getFillColor: rgb(selColor, 46),
+        getLineColor: rgb(selColor, 255),
         stroked: true,
         lineWidthUnits: "pixels",
         getLineWidth: 2,
@@ -742,8 +763,8 @@ export default function MapView({ data }: { data: StaticData }) {
         id: "hub-casing",
         data: hubsDraw,
         getPosition: (h) => [h.lon, h.lat],
-        getFillColor: rgb(C.bg, 210),
-        getRadius: (h) => hubR(h) + 3.2,
+        getFillColor: rgb(C.paper, 245),
+        getRadius: (h) => hubR(h) + 2.4,
         radiusUnits: "pixels",
         updateTriggers: { getRadius: sizeKey },
       }),
@@ -752,17 +773,17 @@ export default function MapView({ data }: { data: StaticData }) {
         id: "hubs",
         data: hubsDraw,
         getPosition: (h) => [h.lon, h.lat],
-        getFillColor: (h) => (h.rank === selRank ? rgb(actionColor(h.action)) : rgb(C.bg, 255)),
-        getLineColor: (h) => rgb(actionColor(h.action)),
+        getFillColor: (h) => (h.rank === selRank ? rgb(C.ink) : rgb(actionStyle(h.action).fill, hubA(h))),
+        getLineColor: (h) => (h.rank === selRank ? rgb(actionStyle(h.action).fill) : rgb(actionStyle(h.action).ring, hubA(h))),
         stroked: true,
         lineWidthUnits: "pixels",
-        getLineWidth: (h) => (city && h.rank > 20 ? 2.2 : 3),
+        getLineWidth: (h) => (h.rank === selRank ? 3 : 0),
         getRadius: (h) => hubR(h),
         radiusUnits: "pixels",
         pickable: true,
         autoHighlight: true,
         highlightColor: [255, 255, 255, 80],
-        updateTriggers: { getFillColor: selRank, getRadius: sizeKey, getLineWidth: city },
+        updateTriggers: { getFillColor: selRank, getLineColor: selRank, getRadius: sizeKey, getLineWidth: selRank },
       }),
     twin &&
       L.hubs &&
@@ -774,7 +795,7 @@ export default function MapView({ data }: { data: StaticData }) {
         extruded: true,
         getPosition: (h) => [h.lon, h.lat],
         getElevation: (h) => beaconH(h),
-        getFillColor: (h) => rgb(actionColor(h.action), h.rank === selRank ? 255 : 235),
+        getFillColor: (h) => rgb(actionStyle(h.action).fill, h.rank === selRank ? 255 : 235),
         material: { ambient: 0.9, diffuse: 0.45, shininess: 40, specularColor: [255, 240, 220] },
         pickable: true,
         autoHighlight: true,
@@ -788,16 +809,17 @@ export default function MapView({ data }: { data: StaticData }) {
         getPosition: (h) => [h.lon, h.lat, twin ? beaconH(h) + 70 : 0],
         getText: (h) => String(h.rank),
         getSize: (h) => (h.type === "L" ? 12 : 11) * Math.min(zf, 1.25),
-        getColor: (h) => (h.rank === selRank ? rgb(C.bg) : rgb("#FFFFFF")),
+        // 3D: sütun üstündə rəqəm həmişə ağdır (mürəkkəb konturla); 2D: disk rənginə görə kontrast
+        getColor: (h) => (twin || h.rank === selRank ? rgb("#FFFFFF", twin ? hubA(h) : 255) : rgb(actionStyle(h.action).text, hubA(h))),
         fontFamily: font,
         fontWeight: 700,
         fontSettings: { sdf: true, fontSize: 64, buffer: 6 },
         outlineWidth: twin ? 4 : 0,
-        outlineColor: rgb(C.bg, 255),
+        outlineColor: rgb(C.ink, 255),
         getTextAnchor: "middle",
         getAlignmentBaseline: "center",
         billboard: true,
-        updateTriggers: { getColor: selRank, getSize: sizeKey, getPosition: [twin, beaconK] },
+        updateTriggers: { getColor: [selRank, twin], getSize: sizeKey, getPosition: [twin, beaconK] },
       }),
     L.hubs &&
       z >= 13 &&
@@ -809,16 +831,16 @@ export default function MapView({ data }: { data: StaticData }) {
         getText: (h) => h.label,
         getSize: 12.5,
         fontWeight: 700,
-        getColor: (h) => rgb(actionColor(h.action), 255),
+        getColor: (h) => rgb(actionColor(h.action), hubA(h)),
         getPixelOffset: (h) => [twin ? 14 : hubR(h) + 7, 0],
-        updateTriggers: { getPixelOffset: sizeKey, getPosition: [twin, beaconK] },
+        updateTriggers: { getPixelOffset: sizeKey, getPosition: [twin, beaconK], getColor: selRank },
       }),
     new ScatterplotLayer<WhatIfHub>({
       id: "whatif",
       data: s.whatIf,
       getPosition: (h) => [h.lon, h.lat],
-      getFillColor: (h) => (h.key === selKey ? rgb("#FFFFFF") : rgb("#FFFFFF", 225)),
-      getLineColor: rgb(C.bg),
+      getFillColor: (h) => (h.key === selKey ? rgb(C.ink) : rgb("#FFFFFF")),
+      getLineColor: rgb(C.ink),
       stroked: true,
       lineWidthUnits: "pixels",
       getLineWidth: 3,
@@ -826,7 +848,7 @@ export default function MapView({ data }: { data: StaticData }) {
       radiusUnits: "pixels",
       pickable: true,
       autoHighlight: true,
-      highlightColor: rgb(C.hub, 160),
+      highlightColor: rgb(C.cobalt, 160),
       updateTriggers: { getFillColor: selKey, getRadius: selKey },
     }),
   ].filter(Boolean);
@@ -848,31 +870,31 @@ export default function MapView({ data }: { data: StaticData }) {
     const style = {
       background: C.surface,
       color: C.text,
-      fontFamily: "var(--font-archivo), Archivo, sans-serif",
+      fontFamily: "var(--font-manrope), Manrope, sans-serif",
       fontSize: "12px",
       lineHeight: "1.45",
-      borderRadius: "6px",
-      padding: "8px 10px",
+      borderRadius: "10px",
+      padding: "8px 11px",
       border: `1px solid ${C.line}`,
-      boxShadow: "0 6px 18px rgba(0,0,0,.35)",
+      boxShadow: "0 6px 20px rgba(14,26,43,.14)",
       maxWidth: "280px",
     };
     const head = (color: string, kicker: string, title: string) =>
-      `<div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:${color};margin-bottom:2px">${kicker}</div><div style="font-weight:700;font-size:13px">${title}</div>`;
+      `<div style="font-size:11px;font-weight:700;color:${color};margin-bottom:1px">${kicker}</div><div style="font-weight:700;font-size:13px">${title}</div>`;
     const sub = (t: string) => `<div style="color:${C.muted}">${t}</div>`;
     const id = info.layer?.id;
     if ((id === "buses" || id === "buses-live-dots") && "live" in o) {
       const b = (o as unknown as { live: LiveBus }).live;
       const esc = (t: string | null) => String(t ?? "—").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
       return {
-        html: `${head("#FFB020", "Canlı avtobus · AYNA", `№ ${esc(b.line)} → ${esc(b.destination)}`)}${sub(`Avtobus ${esc(b.id)}${b.occupancy ? ` · ${esc(b.occupancy)}` : ""}`)}`,
+        html: `${head("#A8650A", "Canlı avtobus · AYNA", `№ ${esc(b.line)} → ${esc(b.destination)}`)}${sub(`Avtobus ${esc(b.id)}${b.occupancy ? ` · ${esc(b.occupancy)}` : ""}`)}`,
         style,
       };
     }
     if (id === "cells") {
       const r = o as unknown as H3Row;
       return {
-        html: `${head("#F79CB4", "H3 xana (~0,1 km²)", `Əhali: ~${Math.round(r[1])}`)}${sub(`Nəqliyyat minikləri: ~${Math.round(r[2])}/gün`)}${sub(`Boşluq: ${r[5] == null ? "—" : Math.round(r[5] * 100) + "%"}`)}${sub(`Ən yaxın parkinq: ${r[6] == null ? "> 400 m" : Math.round(r[6]) + " m"}`)}`,
+        html: `${head("#C4321F", "H3 xana (~0,1 km²)", `Əhali: ~${Math.round(r[1])}`)}${sub(`Nəqliyyat minikləri: ~${Math.round(r[2])}/gün`)}${sub(`Boşluq: ${r[5] == null ? "—" : Math.round(r[5] * 100) + "%"}`)}${sub(`Ən yaxın parkinq: ${r[6] == null ? "> 400 m" : Math.round(r[6]) + " m"}`)}`,
         style,
       };
     }
@@ -909,13 +931,14 @@ export default function MapView({ data }: { data: StaticData }) {
       };
     }
     if (id === "rail") return { html: `${head(C.rail, "Elektrik qatarı stansiyası (ADY)", railName(p))}${p.n_routes != null ? sub(`Xətt: ${p.n_routes}${p.n_trips != null ? ` · reys: ${p.n_trips}` : ""}`) : ""}`, style };
-    if (id === "whatif") return { html: `${head("#FFFFFF", "Sizin hub", "Yoxlanılan nöqtə")}`, style };
+    if (id === "whatif") return { html: `${head(C.ink, "Sizin hub", "Yoxlanılan nöqtə")}`, style };
     return null;
   }, []);
 
   if (!style) return <div className="absolute inset-0 bg-[var(--bg)]" aria-hidden />;
 
   return (
+    <>
     <MapGL
       ref={(r) => {
         mapInstance = r;
@@ -948,5 +971,7 @@ export default function MapView({ data }: { data: StaticData }) {
         getTooltip={getTooltip}
       />
     </MapGL>
+    {tap && <span key={tap.id} aria-hidden className="ayan-tap" data-state={tap.state} style={{ left: tap.x, top: tap.y }} />}
+    </>
   );
 }

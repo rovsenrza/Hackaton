@@ -1,35 +1,124 @@
 @import "tailwindcss";
 
+/* BakıKart validatoru dünyası: kart kağızı fon, ağ kart panellər, 1px polad tikiş,
+   kobalt brend (AYAN işarəsi), mürəkkəb validator ekranı, yaşıl təsdiq / qırmızı rədd. */
 :root {
-  --bg: #0F2430;
-  --surface: #16313F;
-  --surface2: #1D3E4F;
-  --line: #2A5163;
-  --text: #E8EEF0;
-  --muted: #8FA6B2;
+  --bg: #F5F7FA;
+  --surface: #FFFFFF;
+  --surface2: #F2F5F9;
+  --line: #D3DAE3;
+  --line-strong: #B9C3CF;
+  --text: #0E1A2B;
+  --muted: #5A6779;
+  --ink: #0E1A2B;
+  --ink-2: #1A2A40;
+  --ink-text: #F3F6FA;
+  --ink-muted: #9FB0C6;
+  --cobalt: #1F5BB5;
+  --cobalt-deep: #17468C;
+  --cobalt-tint: #E8EFFA;
+  --on-accent: #FFFFFF;
+  --ok: #12A150;
+  --ok-tint: #E4F5EB;
+  --deny: #D7372F;
+  --deny-tint: #FBE9E7;
   --metro: #D6403A;
-  --bus: #3D8FD6;
-  --bike: #3CB37A;
-  --hub: #F2A93B;
-  --upgrade: #C9A0FF;
+  --bus: #6683A8;
+  --bike: #12A150;
+  --hub: #1F5BB5;
+  --upgrade: #7A4CC2;
+  --official: #0A8C8C;
+  --radius-card: 14px;
+  --radius-ctl: 9px;
 }
 
 @theme inline {
-  --font-sans: var(--font-archivo), system-ui, sans-serif;
-  --font-display: var(--font-archivo), system-ui, sans-serif;
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
+  --font-display: var(--font-manrope), system-ui, sans-serif;
 }
 
 html, body { height: 100%; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-archivo), system-ui, sans-serif;
-  font-feature-settings: "tnum" 0;
+  font-family: var(--font-manrope), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
-.font-display { font-stretch: 88%; letter-spacing: -0.01em; }
+.font-display { letter-spacing: -0.02em; }
+.font-wordmark { font-family: var(--font-montserrat), var(--font-manrope), sans-serif; letter-spacing: 0.02em; }
 .tabular-nums { font-variant-numeric: tabular-nums; }
-:focus-visible { outline: 2px solid var(--hub); outline-offset: 2px; }
-select option { background: var(--surface2); }
-.maplibregl-ctrl-attrib { background: rgba(15, 36, 48, 0.75) !important; color: var(--muted); }
+
+::selection { background: color-mix(in srgb, var(--cobalt) 22%, transparent); color: var(--text); }
+:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; border-radius: 6px; }
+input, select, textarea { caret-color: var(--cobalt); }
+input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color: var(--cobalt); }
+select option { background: var(--surface); color: var(--text); }
+a { text-underline-offset: 3px; }
+
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 8px; border: 2px solid var(--surface); }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* kart panel: ağ kart, polad tikiş; kölgə yoxdur, xəritədən 1px tikişlə ayrılır */
+.ayan-card {
+  background: var(--surface);
+  border: 1px solid #C9D2DD;
+  border-radius: var(--radius-card);
+}
+.ayan-seam { border-color: var(--line); }
+
+/* validator ekranı: mürəkkəb lövhə, böyük tabular rəqəm */
+.ayan-screen {
+  background: var(--ink);
+  color: var(--ink-text);
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), inset 0 10px 24px -14px rgba(0, 0, 0, 0.6);
+}
+.ayan-lcd { font-variant-numeric: tabular-nums; letter-spacing: -0.03em; font-weight: 800; line-height: 0.95; }
+
+/* seqmentli düymə qrupu (kart yuvaları) */
+.ayan-seg { background: var(--surface2); border: 1px solid var(--line); border-radius: 11px; padding: 3px; }
+.ayan-seg > button { border-radius: 8px; transition: background-color 160ms ease-out, color 160ms ease-out; }
+.ayan-seg > button[aria-current="true"], .ayan-seg > button[aria-pressed="true"] {
+  background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(14, 26, 43, 0.12), 0 0 0 1px var(--line);
+}
+
+.ayan-btn-primary {
+  background: var(--cobalt); color: var(--on-accent); border-radius: var(--radius-ctl); font-weight: 700;
+  transition: background-color 160ms ease-out, transform 160ms ease-out;
+}
+.ayan-btn-primary:hover { background: var(--cobalt-deep); }
+.ayan-btn-primary:active { transform: translateY(1px); }
+.ayan-btn-primary:disabled { opacity: 0.55; cursor: progress; }
+
+/* validator LED */
+.ayan-led { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent); background: currentColor; }
+
+/* what-if toxunuşu: kobalt dalğa gözləyir, yaşıl təsdiq və ya qırmızı rədd ilə bağlanır */
+.ayan-tap { position: absolute; z-index: 15; width: 0; height: 0; pointer-events: none; }
+.ayan-tap::before, .ayan-tap::after {
+  content: ""; position: absolute; left: -30px; top: -30px; width: 60px; height: 60px; border-radius: 50%;
+  border: 3.5px solid var(--cobalt); opacity: 0;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), inset 0 0 0 2px rgba(255, 255, 255, 0.9);
+}
+.ayan-tap[data-state="pending"]::before { animation: ayan-pulse 900ms cubic-bezier(0.16, 1, 0.3, 1) infinite; }
+.ayan-tap[data-state="pending"]::after { animation: ayan-pulse 900ms cubic-bezier(0.16, 1, 0.3, 1) 450ms infinite; }
+.ayan-tap[data-state="ok"]::before { border-color: var(--ok); animation: ayan-settle 1100ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.ayan-tap[data-state="deny"]::before { border-color: var(--deny); animation: ayan-settle 1100ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes ayan-pulse { from { transform: scale(0.25); opacity: 0.9; } to { transform: scale(1.6); opacity: 0; } }
+@keyframes ayan-settle { 0% { transform: scale(0.5); opacity: 1; border-width: 5px; } 60% { opacity: 0.9; } 100% { transform: scale(2.2); opacity: 0; border-width: 2px; } }
+
+/* validator hökmü zolağı: inspektorda yeni nəticə gələndə bir dəfə işıqlanır */
+.ayan-verdict { animation: ayan-verdict 700ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes ayan-verdict { from { transform: translateY(-4px); opacity: 0.2; } to { transform: none; opacity: 1; } }
+
+.maplibregl-ctrl-attrib { background: rgba(255, 255, 255, 0.8) !important; color: var(--muted); }
 .maplibregl-ctrl-attrib a { color: var(--muted) !important; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+/* atribusiya tikinti ardıcıllığı kartının üstündə, inspektorun solunda qalır (OSM tələbi: həmişə görünən) */
+.maplibregl-ctrl-bottom-right { bottom: 158px !important; right: 392px !important; }
+.maplibregl-ctrl-attrib-button { background-color: var(--surface) !important; }
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+  .ayan-tap { display: none; }
+}

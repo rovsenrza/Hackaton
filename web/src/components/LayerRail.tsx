@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { EngineOffline, post, type StaticData } from "@/lib/data";
 import { useStore, type LayerKey } from "@/lib/store";
-import { C, GAP_STOPS } from "@/lib/theme";
+import { C, GAP_STOPS, actionStyle } from "@/lib/theme";
 import { int } from "@/lib/format";
 import type { CellMetric, Hub } from "@/lib/types";
 import { FIXED_BREAKS, quantileBreaks } from "./MapView";
@@ -17,14 +17,14 @@ const METRICS: { id: CellMetric; label: string; unit: string }[] = [
   { id: "transit", label: "Nəqliyyat minikləri", unit: "gündəlik" },
 ];
 const IDX = { pop: 1, transit: 2, D: 3, w: 4, gap: 5 } as const;
-const LAND = [19, 43, 56]; // baza xəritəsinin quru rəngi (leqend rəngləri xəritədəki kimi qarışdırılır)
+const LAND = [237, 241, 245]; // baza xəritəsinin quru rəngi (leqend rəngləri xəritədəki kimi qarışdırılır)
 
 /** Leqend nişanları: xəritədəki simvollarla eyni SVG */
 function Sym({ id, size = 16 }: { id: SymbolId; size?: number }) {
   return <span aria-hidden className="inline-block bg-contain bg-center bg-no-repeat" style={{ width: size, height: size, backgroundImage: `url("${SYMBOL_URL[id]}")` }} />;
 }
-function Ring({ color, label = "", size = 16 }: { color: string; label?: string; size?: number }) {
-  return <span aria-hidden className="inline-block bg-contain bg-center bg-no-repeat" style={{ width: size, height: size, backgroundImage: `url("${hubRingUrl(color, label)}")` }} />;
+function Ring({ action, label = "", size = 16 }: { action: string; label?: string; size?: number }) {
+  return <span aria-hidden className="inline-block bg-contain bg-center bg-no-repeat" style={{ width: size, height: size, backgroundImage: `url("${hubRingUrl(actionStyle(action), label)}")` }} />;
 }
 function Line({ color, w = 3 }: { color: string; w?: number }) {
   return <span aria-hidden className="inline-block w-4 rounded" style={{ height: w, background: color }} />;
@@ -40,11 +40,11 @@ function Dots({ a, b }: { a: string; b?: string }) {
 function Hex() {
   return (
     <span aria-hidden className="inline-block h-[14px] w-4"
-      style={{ clipPath: "polygon(25% 4%,75% 4%,100% 50%,75% 96%,25% 96%,0 50%)", background: "linear-gradient(90deg,#702880,#E25896,#FAACB6)" }} />
+      style={{ clipPath: "polygon(25% 4%,75% 4%,100% 50%,75% 96%,25% 96%,0 50%)", background: "linear-gradient(90deg,#FDD696,#F59A62,#D44C30)" }} />
   );
 }
 function Iso() {
-  return <span aria-hidden className="inline-block h-3 w-4 rounded-[4px] border-2" style={{ borderColor: C.hub, background: "rgba(242,169,59,.22)" }} />;
+  return <span aria-hidden className="inline-block h-3 w-4 rounded-[4px] border-2" style={{ borderColor: C.hub, background: "rgba(31,91,181,.16)" }} />;
 }
 
 type Row = { k: LayerKey; label: string; count?: string; hint: string; sw: React.ReactNode };
@@ -61,7 +61,7 @@ export default function LayerRail({ data }: { data: StaticData }) {
     {
       title: "Təklif",
       rows: [
-        { k: "hubs", label: "Təklif olunan hub-lar", count: String(hubs.length), hint: "Rəqəm: tikinti sırası. Ölçü: tip S/M/L", sw: <Ring color={C.hub} label="1" /> },
+        { k: "hubs", label: "Təklif olunan hub-lar", count: String(hubs.length), hint: "Rəqəm: tikinti sırası. Ölçü: tip S/M/L", sw: <Ring action="new" label="1" /> },
         { k: "isochrones", label: "5 dəq. piyada zonası", hint: "Seçilmiş hub üçün, real küçə şəbəkəsi ilə", sw: <Iso /> },
       ],
     },
@@ -116,26 +116,26 @@ export default function LayerRail({ data }: { data: StaticData }) {
   const setW = (k: keyof typeof w, v: number) => s.set({ weights: { ...w, [k]: v } });
 
   return (
-    <aside className="absolute left-4 top-20 z-20 flex max-h-[calc(100%-15rem)] w-72 flex-col gap-3 overflow-y-auto rounded-md bg-[var(--surface)]/95 p-3.5 shadow-xl ring-1 ring-[var(--line)]" aria-label="Qatlar">
+    <aside className="ayan-card absolute left-4 top-[5.25rem] z-20 flex max-h-[calc(100%-16rem)] w-[18.5rem] flex-col gap-3 overflow-y-auto p-3.5" aria-label="Qatlar">
       <section>
-        <h2 className="mb-1 text-sm font-semibold">Qatlar</h2>
+        <h2 className="mb-1 px-1.5 text-[15px] font-bold tracking-tight">Qatlar</h2>
         {groups.map((g) => (
-          <div key={g.title} className="mt-1.5">
-            <h3 className="mb-0.5 px-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">{g.title}</h3>
+          <div key={g.title} className="mt-2 border-t border-[var(--line)] pt-2 first:border-t-0 first:pt-0">
+            <h3 className="mb-1 px-1.5 text-[11.5px] font-semibold text-[var(--muted)]">{g.title}</h3>
             <ul>
               {g.rows.map((r) => (
                 <li key={r.k}>
-                  <label title={r.hint} className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-[3px] hover:bg-[var(--surface2)]">
-                    <input type="checkbox" checked={s.layers[r.k]} onChange={() => s.toggle(r.k)} className="accent-[var(--hub)]" />
+                  <label title={r.hint} className="flex cursor-pointer items-center gap-2 rounded-[8px] px-1.5 py-[4px] transition-colors hover:bg-[var(--surface2)]">
+                    <input type="checkbox" checked={s.layers[r.k]} onChange={() => s.toggle(r.k)} className="h-3.5 w-3.5" />
                     <span className="grid w-5 shrink-0 place-items-center">{r.sw}</span>
-                    <span className={`flex-1 truncate text-[13px] ${s.layers[r.k] ? "" : "text-[var(--muted)]"}`}>{r.label}</span>
+                    <span className={`flex-1 truncate text-[13px] font-medium ${s.layers[r.k] ? "" : "text-[var(--muted)]"}`}>{r.label}</span>
                     {r.count && <span className="text-[11px] tabular-nums text-[var(--muted)]">{r.count}</span>}
                   </label>
                   {r.k === "hubs" && s.layers.hubs && (
                     <ul className="mb-1 ml-[2.1rem] mt-0.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[11px] text-[var(--muted)]">
-                      {([["new", C.hub, "yeni", "Yeni hub"], ["upgrade", C.upgrade, "çevrilmə", "Mövcud parkinqin hub-a çevrilməsi"], ["integrate", C.integrate, "inteqrasiya", "AYNA mübadilə mərkəzinə mikromobillik inteqrasiyası"]] as const).map(([a, col, t, hint]) => (
+                      {([["new", "yeni", "Yeni hub"], ["upgrade", "çevrilmə", "Mövcud parkinqin hub-a çevrilməsi"], ["integrate", "inteqrasiya", "AYNA mübadilə mərkəzinə mikromobillik inteqrasiyası"]] as const).map(([a, t, hint]) => (
                         <li key={a} className="flex items-center gap-1" title={hint}>
-                          <Ring color={col} size={11} />
+                          <Ring action={a} size={12} />
                           <span>{t}</span>
                           <span className="tabular-nums opacity-80">{nAct(a)}</span>
                         </li>
@@ -146,7 +146,7 @@ export default function LayerRail({ data }: { data: StaticData }) {
                     <div className="mb-1 ml-[2.1rem] mt-1">
                       <label className="sr-only" htmlFor="metric">İstilik xəritəsi göstəricisi</label>
                       <select id="metric" value={s.cellMetric} onChange={(e) => s.set({ cellMetric: e.target.value as CellMetric })}
-                        className="w-full rounded border border-[var(--line)] bg-[var(--surface2)] px-2 py-1 text-[13px]">
+                        className="w-full rounded-[8px] border border-[var(--line)] bg-[var(--surface)] px-2 py-1.5 text-[13px] font-medium">
                         {METRICS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
                       </select>
                       <div className="mt-1.5 flex h-2.5 gap-[2px]" aria-hidden>
@@ -175,28 +175,28 @@ export default function LayerRail({ data }: { data: StaticData }) {
 
 
       <details className="group border-t border-[var(--line)] pt-2.5" open={!!s.optimized}>
-        <summary className="cursor-pointer list-none text-[13px] font-semibold">
-          <span className="mr-1 inline-block transition-transform group-open:rotate-90">›</span> Ssenari çəkiləri
+        <summary className="flex cursor-pointer list-none items-center gap-1.5 px-1.5 text-[13.5px] font-bold">
+          <svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5 text-[var(--muted)] transition-transform group-open:rotate-90"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg> Ssenari çəkiləri
         </summary>
         <p className="mb-2 mt-1 text-xs text-[var(--muted)]">Tələbatın tərkibini dəyişin və hub-ları yenidən seçin.</p>
         {([["transit", "Nəqliyyat minikləri"], ["pop", "Əhali"], ["poi", "Cazibə nöqtələri"]] as const).map(([k, label]) => (
           <label key={k} className="mb-1.5 block text-xs">
             <span className="flex justify-between"><span>{label}</span><span className="tabular-nums text-[var(--muted)]">{Math.round((w[k] / (w.transit + w.pop + w.poi)) * 100)}%</span></span>
-            <input type="range" min={0} max={1} step={0.05} value={w[k]} onChange={(e) => setW(k, Number(e.target.value))} className="w-full accent-[var(--hub)]" />
+            <input type="range" min={0} max={1} step={0.05} value={w[k]} onChange={(e) => setW(k, Number(e.target.value))} className="w-full" />
           </label>
         ))}
         <label className="mb-2 block text-xs">
           <span className="flex justify-between"><span>Hub sayı</span><span className="tabular-nums text-[var(--muted)]">{s.nHubs}</span></span>
-          <input type="range" min={5} max={50} step={1} value={s.nHubs} onChange={(e) => s.set({ nHubs: Number(e.target.value) })} className="w-full accent-[var(--hub)]" />
+          <input type="range" min={5} max={50} step={1} value={s.nHubs} onChange={(e) => s.set({ nHubs: Number(e.target.value) })} className="w-full" />
         </label>
         <div className="flex gap-2">
           <button onClick={reoptimize} disabled={busy}
-            className="flex-1 rounded bg-[var(--hub)] px-3 py-2 text-sm font-semibold text-[var(--bg)] hover:brightness-110 disabled:opacity-60">
+            className="ayan-btn-primary flex-1 px-3 py-2 text-sm">
             {busy ? "Hesablanır…" : "Hub-ları yenidən seç"}
           </button>
           {s.optimized && (
             <button onClick={() => s.set({ optimized: null, weights: { transit: 0.45, pop: 0.35, poi: 0.2 }, selected: null })}
-              className="rounded border border-[var(--line)] px-3 py-2 text-sm text-[var(--muted)] hover:text-[var(--text)]">Baza</button>
+              className="rounded-[9px] border border-[var(--line)] px-3 py-2 text-sm font-semibold text-[var(--muted)] hover:text-[var(--text)]">Baza</button>
           )}
         </div>
       </details>

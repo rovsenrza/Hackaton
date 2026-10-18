@@ -54,9 +54,11 @@ export default function App() {
   if (!data)
     return (
       <div className="grid h-dvh place-items-center">
-        <div className="text-center">
-          <div className="font-display text-4xl tracking-tight text-[var(--text)]">AYAN</div>
-          <div className="mt-2 text-sm text-[var(--muted)]">Bakının nəqliyyat əkizi yüklənir…</div>
+        <div className="flex flex-col items-center text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/ayan-mark.png" alt="" width={86} height={100} className="h-[100px] w-auto" />
+          <div className="font-wordmark mt-4 text-4xl font-bold text-[var(--cobalt)]">AYAN</div>
+          <div className="mt-2 text-sm font-medium text-[var(--muted)]">Bakının nəqliyyat əkizi yüklənir…</div>
         </div>
       </div>
     );
@@ -76,7 +78,7 @@ export default function App() {
       {panel === "method" && <Methodology data={data} />}
       {panel === "quality" && <Quality data={data} />}
       {toast && (
-        <div role="status" className="pointer-events-none absolute left-1/2 top-20 z-40 max-w-xl -translate-x-1/2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--text)] shadow-lg">
+        <div role="status" className="ayan-verdict pointer-events-none absolute left-1/2 top-[5.5rem] z-40 max-w-xl -translate-x-1/2 rounded-[11px] bg-[var(--ink)] px-4 py-2.5 text-[13.5px] font-semibold text-[var(--ink-text)] shadow-[0_12px_30px_-12px_rgba(14,26,43,.55)]">
           {toast}
         </div>
       )}

@@ -31,48 +31,57 @@ export default function TopBar() {
     }
   };
 
+  const led = engineOnline == null ? "text-[var(--muted)]" : engineOnline ? "text-[var(--ok)]" : "text-[#C77A0A]";
+
   return (
-    <header className="absolute inset-x-0 top-0 z-30 flex items-center gap-4 px-4 py-3">
-      <div className="flex items-baseline gap-3 rounded-md bg-[var(--surface)]/95 px-3 py-2 shadow-lg ring-1 ring-[var(--line)]">
-        <span className="font-display text-xl font-bold tracking-tight">AYAN</span>
-        <span className="hidden text-xs text-[var(--muted)] md:inline">Mobility hub planlayıcısı, Bakı</span>
+    <header className="absolute inset-x-0 top-0 z-30 flex items-center gap-3 px-4 py-3">
+      <div className="ayan-card flex items-center gap-2.5 py-1.5 pl-2 pr-3.5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/ayan-mark.png" alt="" width={30} height={35} className="h-[35px] w-auto" />
+        <div className="leading-none">
+          <div className="font-wordmark text-[19px] font-bold text-[var(--cobalt)]">AYAN</div>
+          <div className="mt-1 hidden text-[11px] font-medium text-[var(--muted)] md:block">Mobility hub planlayıcısı · Bakı</div>
+        </div>
       </div>
 
-      <nav className="flex rounded-md bg-[var(--surface)]/95 p-1 shadow-lg ring-1 ring-[var(--line)]" aria-label="Bölmələr">
-        {PANELS.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => set({ panel: p.id })}
-            aria-current={panel === p.id}
-            className={`rounded px-3 py-1.5 text-sm transition-colors ${panel === p.id ? "bg-[var(--surface2)] text-[var(--text)]" : "text-[var(--muted)] hover:text-[var(--text)]"}`}
-          >
-            {p.label}
-          </button>
-        ))}
+      <nav className="ayan-card flex min-w-0 overflow-x-auto p-1" aria-label="Bölmələr">
+        <div className="ayan-seg flex border-0 bg-transparent p-0">
+          {PANELS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => set({ panel: p.id })}
+              aria-current={panel === p.id}
+              className={`whitespace-nowrap px-3.5 py-1.5 text-[13.5px] font-semibold ${panel === p.id ? "text-[var(--text)]" : "text-[var(--muted)] hover:text-[var(--text)]"}`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </nav>
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex items-center gap-2.5">
         {panel === "map" && !copilotOpen && (
-          <button onClick={() => set({ copilotOpen: true })}
-            className="rounded-full bg-[var(--hub)] px-4 py-2 text-sm font-semibold text-[var(--bg)] shadow-lg hover:brightness-110">
+          <button onClick={() => set({ copilotOpen: true })} className="ayan-btn-primary px-4 py-2.5 text-[13.5px]">
             AYAN Kopilot
           </button>
         )}
-        <div className="flex rounded-md bg-[var(--surface)]/95 p-1 shadow-lg ring-1 ring-[var(--line)]" role="group" aria-label="Görünüş rejimi">
-          <button onClick={() => setMode("plan")} aria-pressed={mode === "plan"}
-            className={`rounded px-3 py-1.5 text-sm ${mode === "plan" ? "bg-[var(--surface2)]" : "text-[var(--muted)] hover:text-[var(--text)]"}`}>
-            2D planlaşdırma
-          </button>
-          <button onClick={() => setMode("twin")} aria-pressed={mode === "twin"}
-            className={`rounded px-3 py-1.5 text-sm ${mode === "twin" ? "bg-[var(--surface2)]" : "text-[var(--muted)] hover:text-[var(--text)]"}`}>
-            3D rəqəmsal əkiz
-          </button>
+        <div className="ayan-card p-1" role="group" aria-label="Görünüş rejimi">
+          <div className="ayan-seg flex border-0 bg-transparent p-0">
+            <button onClick={() => setMode("plan")} aria-pressed={mode === "plan"}
+              className={`px-3 py-1.5 text-[13.5px] font-semibold ${mode === "plan" ? "" : "text-[var(--muted)] hover:text-[var(--text)]"}`}>
+              2D planlaşdırma
+            </button>
+            <button onClick={() => setMode("twin")} aria-pressed={mode === "twin"}
+              className={`px-3 py-1.5 text-[13.5px] font-semibold ${mode === "twin" ? "" : "text-[var(--muted)] hover:text-[var(--text)]"}`}>
+              3D rəqəmsal əkiz
+            </button>
+          </div>
         </div>
         <span
           title={engineOnline ? "Geo Engine qoşuludur: real piyada izoxronu və canlı optimallaşdırma" : "Geo Engine əlçatan deyil: statik nəticələr və düz xətt buferi"}
-          className="flex items-center gap-2 rounded-md bg-[var(--surface)]/95 px-3 py-2 text-xs text-[var(--muted)] shadow-lg ring-1 ring-[var(--line)]"
+          className="ayan-card flex items-center gap-2 px-3 py-2.5 text-[12.5px] font-semibold text-[var(--text)]"
         >
-          <span className={`h-2 w-2 rounded-full ${engineOnline == null ? "bg-[var(--muted)]" : engineOnline ? "bg-[var(--bike)]" : "bg-[var(--hub)]"}`} />
+          <span className={`ayan-led ${led}`} />
           {engineOnline == null ? "Engine yoxlanır" : engineOnline ? "Engine qoşulub" : "Ehtiyat rejimi"}
         </span>
       </div>

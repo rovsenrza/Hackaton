@@ -22,6 +22,8 @@ export default function Methodology({ data }: { data: StaticData }) {
   const rm = M.demand.route_model;
   const cal = M.demand.route_calibration;
   const v = M.hubs.validation;
+  const ring = M.value?.ring_auc;
+  const auc = (x: number) => x.toFixed(2).replace(".", ",");
   const qa = M.hubs.placement_qa;
   const conv = M.convert;
   const g = M.walk_graph;
@@ -37,9 +39,9 @@ export default function Methodology({ data }: { data: StaticData }) {
   ];
 
   return (
-    <div className="absolute inset-0 z-20 overflow-y-auto bg-[var(--bg)]/92 px-6 pb-12 pt-20 backdrop-blur-sm">
+    <div className="absolute inset-0 z-20 overflow-y-auto bg-[var(--bg)] px-6 pb-12 pt-20">
       <div className="mx-auto max-w-4xl">
-        <h1 className="font-display text-3xl font-bold tracking-tight">Metodologiya və data keyfiyyəti</h1>
+        <h1 className="text-[2rem] font-extrabold tracking-tight">Metodologiya və data keyfiyyəti</h1>
         <p className="mt-1 max-w-2xl text-[var(--muted)]">Hər rəqəmin haradan gəldiyi və nə qədər etibarlı olduğu.</p>
 
         <section className="mt-8">
@@ -61,6 +63,10 @@ export default function Methodology({ data }: { data: StaticData }) {
               Tələbat indeksi AYNA-nın seçdiyi {v.demand_auc_vs_ayna_parkings.n_pos} parkinq yerini təsadüfi məskunlaşmış xanalardan <b>AUC {String(v.demand_auc_vs_ayna_parkings.D).replace(".", ",")}</b> ilə ayırır.
               Bunun bir hissəsi “mərkəz effekti”dir: təkcə mərkəzə yaxınlıq {String(v.demand_auc_vs_ayna_parkings["yalnız_mərkəzə_yaxınlıq"]).replace(".", ",")} verir.
               Mərkəzdən 8 km halqası daxilində müqayisə edəndə model <b>{String(v.demand_auc_within_8km.D).replace(".", ",")}</b> verir (təkcə əhali {String(v.demand_auc_within_8km.pop_n).replace(".", ",")}, təkcə mərkəzə yaxınlıq {String(v.demand_auc_within_8km["yalnız_mərkəzə_yaxınlıq"]).replace(".", ",")}).
+              {ring && (
+                <> Mərkəz effektini tam çıxarmaq üçün müqayisə 1 km-lik halqalar daxilində aparılanda model <b>{auc(ring.ayna_parkings.D.auc)}</b> verir (95% CI {auc(ring.ayna_parkings.D.ci95[0])}–{auc(ring.ayna_parkings.D.ci95[1])}), təkcə mərkəzə yaxınlıq isə {auc(ring.ayna_parkings["yalnız_mərkəzə_yaxınlıq"].auc)}.
+                  {ring.apar && <> Müstəqil mənbə olan Apar vasitə mövqeləri ilə eyni test: <b>{auc(ring.apar.D.auc)}</b> (baza xətti {auc(ring.apar["yalnız_mərkəzə_yaxınlıq"].auc)}).</>}</>
+              )}
               Bu, istifadə datası ilə doğrulama deyil: AYNA nöqtə üzrə sifariş datası verərsə, dəqiq test mümkündür.
             </li>
             <li>

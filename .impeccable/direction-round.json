@@ -1,0 +1,122 @@
+{
+  "title": "AYAN: vizual dünyanı seçin",
+  "question": "Təyin olunan istiqamət BakıKart validatorudur. Saxlayın, alternativ seçin və ya yenidən çəkin.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Validator: toxun və təsdiqlə",
+      "kicker": "THE ROLL",
+      "lineage": "BakıKart kartı, metro turniket validatorları, bilet avtomatları",
+      "thesis": "Hər hub BakıKart toxunuşu kimi qiymətləndirilir: ani, aydın, əsas rəqəm önə çıxır.",
+      "palette": ["#1F5BB5", "#F5F7FA", "#0E1A2B", "#12A150", "#D7372F", "#C9D1DA"],
+      "materials": ["çap olunmuş kart (yuvarlaq künclər)", "fırçalanmış validator poladı", "seqmentli LCD rəqəmlər"],
+      "viewport": "Açıq boz xəritə; solda kart dəstəsi kimi qatlar, sağda validator ekranı kimi inspektor: böyük LCD rəqəm və yaşıl/qırmızı status zolağı; what-if klik validator toxunuşu kimi cavab verir.",
+      "risk": "Ölçünü keçsə skeuomorfik oyuncağa çevrilə bilər; xəritədə sakit qalmalıdır.",
+      "raised": [
+        {"from": "challenger-console", "raise": "Panellər kölgə yox, nazik tikişlərlə ayrılır; naviqasiya məzmunu dəyişir, layout yerində qalır."},
+        {"from": "challenger-folio", "raise": "Eyni büdcə müqayisəsi və tikinti ardıcıllığı bir sabit miqyasda çəkilir, barlar dürüst müqayisə olunur."},
+        {"from": "challenger-wall", "raise": "Hub seçiləndə qalan qatlar sönükləşir, fokuslanan obyekt xəritəyə sahib olur."},
+        {"from": "challenger-specimen", "raise": "Ssenari sürgüləri bütün xəritəni canlı dəyişir, oxunuş sürüşdürdükcə sayır."}
+      ]
+    },
+    {
+      "id": "model-pick",
+      "label": "Yol nişanı",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "Azərbaycan yol nişanları (mavi məlumat lövhələri) və yol cizgiləri",
+      "thesis": "İnterfeys yol nişanlarının dilində danışır: mavi istiqamət lövhələri, ağ zolaq cizgisi, uzaqdan oxunan.",
+      "palette": ["#1F5BB5", "#EEF0EE", "#FFFFFF", "#2A2E33", "#F2C230"],
+      "materials": ["retroreflektiv lövhə", "yol boyası", "beton"],
+      "viewport": "Beton rəngli xəritə; panellər mavi nişan lövhələri kimi ağ yazı ilə; tikinti ardıcıllığı yol zolağı kimi qırıq xətt üzərində.",
+      "risk": "Loqonun hərfi oxunuşudur və tanışdır; mavi panellər xəritə ilə rəqabət apara bilər."
+    },
+    {
+      "id": "challenger-gateboard",
+      "label": "Gediş lövhəsi",
+      "verdict": "competitive",
+      "lineage": "minik talonu və aeroport gediş lövhəsi",
+      "thesis": "MCLP sırası canlı gediş lövhəsidir: çəki dəyişəndə sətirlər yerində yenidən sıralanır.",
+      "palette": ["#F4F4F1", "#111111", "#FF5A1F", "#8A8F94"],
+      "materials": ["yüksək kontrastlı panel", "tabular rəqəmlər", "seqmentli talon"],
+      "viewport": "Tikinti ardıcıllığı gediş lövhəsi kimi; hub kartı seqmentli minik talonu kimi, dəyişən sətir narıncı yanır.",
+      "case": "Yaxşı birləşir: sıra məhsulun özəyidir; auditoriya üzrə uduzur, çünki aeroportdur, AYNA-nın öz sistemi deyil.",
+      "risk": "Aeroport havası nəqliyyat planlaşdırmasından yayındıra bilər."
+    },
+    {
+      "id": "challenger-timetable",
+      "label": "Cədvəl rəfi",
+      "verdict": "competitive",
+      "lineage": "1970-ci illərin cib hərəkət cədvəlləri",
+      "thesis": "Bütün panellər bir şrift ölçüsündə; dərəcə qalınlıq, registr, tərsinə çevirmə və xətlə verilir.",
+      "palette": ["#E2B33C", "#3B4A57", "#F6F1E3", "#D9432B", "#1F6B4A"],
+      "materials": ["rəngli şüşə slaydlar", "qızılı işıq masası"],
+      "viewport": "İnspektor və ardıcıllıq xəritə üzərində maili cədvəl slaydları kimi.",
+      "case": "Qismən birləşir: AYNA hər gün cədvəl oxuyur; maili konteynerlər xəritə alətinə mane olur.",
+      "risk": "Tək ölçü və maillik proyektorda oxunuşu çətinləşdirə bilər."
+    },
+    {
+      "id": "challenger-console",
+      "label": "Developer konsolu",
+      "verdict": "declined",
+      "lineage": "qaranlıq developer konsolları",
+      "thesis": "Qrafit fon, nazik tikişlər, aksent yalnız vəziyyət üçün.",
+      "palette": ["#1B1E22", "#2A2F35", "#7FD1B9", "#E5C07B"],
+      "materials": ["qrafit", "1px tikiş"],
+      "viewport": "Kafel panellər, qaranlıq xəritə.",
+      "case": "Sizin 'qaranlıq hacker paneli olmasın' şərtinizə ziddir.",
+      "kept": "Panellər kölgəsiz, nazik tikişlə ayrılır və yerində qalır.",
+      "risk": "Məhz qaçmaq istədiyiniz görünüşdür."
+    },
+    {
+      "id": "challenger-folio",
+      "label": "Botanika albomu",
+      "verdict": "declined",
+      "lineage": "botanika lövhələri",
+      "thesis": "Eyni miqyasda mərhələ-mərhələ lövhələr.",
+      "palette": ["#F3EEE2", "#4E6B3A", "#B3261E", "#6B6B6B"],
+      "materials": ["kağız lövhə", "sepiya xətt"],
+      "viewport": "Beş lövhə bir xətt üzərində.",
+      "case": "Nəqliyyat auditoriyası ilə bağı yoxdur.",
+      "kept": "Müqayisələr bir sabit miqyasda çəkilir.",
+      "risk": "Kontekstdən kənar."
+    },
+    {
+      "id": "challenger-wall",
+      "label": "Striminq divarı",
+      "verdict": "declined",
+      "lineage": "striminq kataloqları",
+      "thesis": "Fokuslanan kafel böyüyür, qalanı sönür.",
+      "palette": ["#141414", "#E50914", "#FFFFFF"],
+      "materials": ["poster kafellər"],
+      "viewport": "Üfüqi sətirlər.",
+      "case": "Əyləncə dilidir, planlaşdırma aləti deyil.",
+      "kept": "Seçilmiş hub-dan başqa hər şey sönükləşir.",
+      "risk": "Əyləncə hissi."
+    },
+    {
+      "id": "challenger-specimen",
+      "label": "Şrift nümunəsi",
+      "verdict": "declined",
+      "lineage": "dəyişən şrift nümunələri",
+      "thesis": "Bir sürgü bütün qlif şəbəkəsini canlı dəyişir.",
+      "palette": ["#FAFAF7", "#111111", "#3355FF"],
+      "materials": ["ağ kağız", "mürəkkəb"],
+      "viewport": "Nəhəng hərf, sürgülər.",
+      "case": "Tipoqrafiya mövzusudur, məhsulun mövzusu deyil.",
+      "kept": "Bir idarəetmə elementi bütün səhnəni canlı dəyişir.",
+      "risk": "Mövzudan kənar."
+    }
+  ],
+  "reroll": {"registers": ["safer", "bolder"]},
+  "buildPath": {"value": "code", "toggle": false},
+  "canon": true,
+  "canonCard": {
+    "label": "Standart GIS planlaşdırma paneli",
+    "thesis": "Kateqoriyanın göndərdiyi: təmiz açıq GIS paneli, mükəmməl icrada.",
+    "palette": ["#FFFFFF", "#1E293B", "#1F5BB5", "#E2E8F0"],
+    "materials": ["təmiz şəbəkə", "açıq baza xəritə"],
+    "viewport": "Solda qatlar, ortada xəritə, sağda göstəricilər, tanış düzülüş.",
+    "risk": "Dizayn etibarilə rəqiblərdən fərqlənmir."
+  },
+  "steer": true
+}

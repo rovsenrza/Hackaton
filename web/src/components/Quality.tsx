@@ -31,7 +31,7 @@ function Pill({ a }: { a: "avto" | "yoxlama" }) {
   return a === "avto" ? (
     <span className="rounded bg-[var(--bike)]/20 px-1.5 py-0.5 text-[11px] text-[var(--bike)]">avtomatik düzəldildi</span>
   ) : (
-    <span className="rounded bg-[var(--hub)]/20 px-1.5 py-0.5 text-[11px] text-[var(--hub)]">insan yoxlaması</span>
+    <span className="rounded-[6px] bg-[var(--cobalt-tint)] px-1.5 py-0.5 text-[11px] font-semibold text-[var(--cobalt)]">insan yoxlaması</span>
   );
 }
 
@@ -81,10 +81,10 @@ export default function Quality({ data }: { data: StaticData }) {
   const shown = rep ? rep.issues.filter((i) => !filter || i.rule === filter).slice(0, 80) : [];
 
   return (
-    <div className="absolute inset-0 z-20 overflow-y-auto bg-[var(--bg)]/92 px-6 pb-12 pt-20 backdrop-blur-sm">
+    <div className="absolute inset-0 z-20 overflow-y-auto bg-[var(--bg)] px-6 pb-12 pt-20">
       <div className="mx-auto max-w-5xl">
         <DataRequests data={data} />
-        <h1 className="mt-12 font-display text-3xl font-bold tracking-tight">Data keyfiyyət mərkəzi</h1>
+        <h1 className="mt-12 text-[2rem] font-extrabold tracking-tight">Data keyfiyyət mərkəzi</h1>
         <p className="mt-1 max-w-2xl text-[var(--muted)]">
           Nəqliyyat faylını atın: koordinat formatı, yerdəyişmiş enlik və uzunluq, dublikatlar, Bakıdan kənar nöqtələr, Excel təhrifləri, kiril simvollar və köhnə marşrutlar avtomatik yoxlanılır.
         </p>
@@ -110,7 +110,7 @@ export default function Quality({ data }: { data: StaticData }) {
             <input ref={input} type="file" accept=".csv,.geojson,.json,.kmz" className="hidden"
               onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
           </div>
-          <div className="rounded-md bg-[var(--surface)] p-4 ring-1 ring-[var(--line)]">
+          <div className="ayan-card p-4">
             <p className="text-sm font-semibold">Real açıq data ilə sınayın</p>
             <p className="mb-2 text-xs text-[var(--muted)]">Bu fayllar opendata.az və AYNA API-dən olduğu kimi götürülüb</p>
             <ul className="space-y-1.5">
@@ -163,7 +163,7 @@ export default function Quality({ data }: { data: StaticData }) {
                   ))}
                   {!rep.rules.length && <li className="text-sm text-[var(--bike)]">Problem tapılmadı: fayl təmizdir.</li>}
                 </ul>
-                <button onClick={download} className="mt-4 rounded bg-[var(--hub)] px-4 py-2 text-sm font-semibold text-[var(--bg)]">
+                <button onClick={download} className="mt-4 ayan-btn-primary px-4 py-2 text-sm">
                   Təmiz faylı yüklə (GeoJSON)
                 </button>
               </div>

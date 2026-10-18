@@ -1,0 +1,786 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-18T08:24:41+00:00",
+  "title": "Design System: AYAN",
+  "extensions": {
+    "colorMeta": {
+      "cobalt": {
+        "role": "primary",
+        "displayName": "BakıKart Cobalt",
+        "canonical": "#1F5BB5",
+        "tonalRamp": [
+          "oklch(15% 0.043 259)",
+          "oklch(26% 0.073 259)",
+          "oklch(37% 0.102 259)",
+          "oklch(48% 0.131 259)",
+          "oklch(59% 0.139 259)",
+          "oklch(70% 0.110 259)",
+          "oklch(82% 0.078 259)",
+          "oklch(95% 0.043 259)"
+        ]
+      },
+      "cobalt-deep": {
+        "role": "primary",
+        "displayName": "Deep Cobalt",
+        "canonical": "#17468C",
+        "tonalRamp": [
+          "oklch(15% 0.043 259)",
+          "oklch(26% 0.073 259)",
+          "oklch(37% 0.102 259)",
+          "oklch(48% 0.127 259)",
+          "oklch(59% 0.127 259)",
+          "oklch(70% 0.110 259)",
+          "oklch(82% 0.078 259)",
+          "oklch(95% 0.043 259)"
+        ]
+      },
+      "cobalt-tint": {
+        "role": "primary",
+        "displayName": "Cobalt Wash",
+        "canonical": "#E8EFFA",
+        "tonalRamp": [
+          "oklch(15% 0.017 259)",
+          "oklch(26% 0.017 259)",
+          "oklch(37% 0.017 259)",
+          "oklch(48% 0.017 259)",
+          "oklch(59% 0.017 259)",
+          "oklch(70% 0.017 259)",
+          "oklch(82% 0.017 259)",
+          "oklch(95% 0.017 259)"
+        ]
+      },
+      "on-accent": {
+        "role": "primary",
+        "displayName": "On Cobalt White",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "oklch(15% 0.000 90)",
+          "oklch(26% 0.000 90)",
+          "oklch(37% 0.000 90)",
+          "oklch(48% 0.000 90)",
+          "oklch(59% 0.000 90)",
+          "oklch(70% 0.000 90)",
+          "oklch(82% 0.000 90)",
+          "oklch(95% 0.000 90)"
+        ]
+      },
+      "confirm-green": {
+        "role": "secondary",
+        "displayName": "Validator Green",
+        "canonical": "#12A150",
+        "tonalRamp": [
+          "oklch(15% 0.043 151)",
+          "oklch(26% 0.073 151)",
+          "oklch(37% 0.102 151)",
+          "oklch(48% 0.131 151)",
+          "oklch(59% 0.139 151)",
+          "oklch(70% 0.110 151)",
+          "oklch(82% 0.078 151)",
+          "oklch(95% 0.043 151)"
+        ]
+      },
+      "confirm-tint": {
+        "role": "secondary",
+        "displayName": "Green Wash",
+        "canonical": "#E4F5EB",
+        "tonalRamp": [
+          "oklch(15% 0.022 160)",
+          "oklch(26% 0.022 160)",
+          "oklch(37% 0.022 160)",
+          "oklch(48% 0.022 160)",
+          "oklch(59% 0.022 160)",
+          "oklch(70% 0.022 160)",
+          "oklch(82% 0.022 160)",
+          "oklch(95% 0.022 160)"
+        ]
+      },
+      "deny-red": {
+        "role": "secondary",
+        "displayName": "Deny Red",
+        "canonical": "#D7372F",
+        "tonalRamp": [
+          "oklch(15% 0.043 28)",
+          "oklch(26% 0.073 28)",
+          "oklch(37% 0.102 28)",
+          "oklch(48% 0.131 28)",
+          "oklch(59% 0.139 28)",
+          "oklch(70% 0.110 28)",
+          "oklch(82% 0.078 28)",
+          "oklch(95% 0.043 28)"
+        ]
+      },
+      "steel": {
+        "role": "tertiary",
+        "displayName": "Scenario Steel",
+        "canonical": "#8E9AA8",
+        "tonalRamp": [
+          "oklch(15% 0.025 252)",
+          "oklch(26% 0.025 252)",
+          "oklch(37% 0.025 252)",
+          "oklch(48% 0.025 252)",
+          "oklch(59% 0.025 252)",
+          "oklch(70% 0.025 252)",
+          "oklch(82% 0.025 252)",
+          "oklch(95% 0.025 252)"
+        ]
+      },
+      "card-stock": {
+        "role": "neutral",
+        "displayName": "Card Stock",
+        "canonical": "#F5F7FA",
+        "tonalRamp": [
+          "oklch(15% 0.005 258)",
+          "oklch(26% 0.005 258)",
+          "oklch(37% 0.005 258)",
+          "oklch(48% 0.005 258)",
+          "oklch(59% 0.005 258)",
+          "oklch(70% 0.005 258)",
+          "oklch(82% 0.005 258)",
+          "oklch(95% 0.005 258)"
+        ]
+      },
+      "card-white": {
+        "role": "neutral",
+        "displayName": "Card White",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "oklch(15% 0.000 90)",
+          "oklch(26% 0.000 90)",
+          "oklch(37% 0.000 90)",
+          "oklch(48% 0.000 90)",
+          "oklch(59% 0.000 90)",
+          "oklch(70% 0.000 90)",
+          "oklch(82% 0.000 90)",
+          "oklch(95% 0.000 90)"
+        ]
+      },
+      "sunk-panel": {
+        "role": "neutral",
+        "displayName": "Sunk Panel",
+        "canonical": "#F2F5F9",
+        "tonalRamp": [
+          "oklch(15% 0.006 255)",
+          "oklch(26% 0.006 255)",
+          "oklch(37% 0.006 255)",
+          "oklch(48% 0.006 255)",
+          "oklch(59% 0.006 255)",
+          "oklch(70% 0.006 255)",
+          "oklch(82% 0.006 255)",
+          "oklch(95% 0.006 255)"
+        ]
+      },
+      "seam": {
+        "role": "neutral",
+        "displayName": "Steel Seam",
+        "canonical": "#D3DAE3",
+        "tonalRamp": [
+          "oklch(15% 0.015 255)",
+          "oklch(26% 0.015 255)",
+          "oklch(37% 0.015 255)",
+          "oklch(48% 0.015 255)",
+          "oklch(59% 0.015 255)",
+          "oklch(70% 0.015 255)",
+          "oklch(82% 0.015 255)",
+          "oklch(95% 0.015 255)"
+        ]
+      },
+      "card-edge": {
+        "role": "neutral",
+        "displayName": "Card Edge",
+        "canonical": "#C9D2DD",
+        "tonalRamp": [
+          "oklch(15% 0.018 253)",
+          "oklch(26% 0.018 253)",
+          "oklch(37% 0.018 253)",
+          "oklch(48% 0.018 253)",
+          "oklch(59% 0.018 253)",
+          "oklch(70% 0.018 253)",
+          "oklch(82% 0.018 253)",
+          "oklch(95% 0.018 253)"
+        ]
+      },
+      "seam-strong": {
+        "role": "neutral",
+        "displayName": "Strong Seam",
+        "canonical": "#B9C3CF",
+        "tonalRamp": [
+          "oklch(15% 0.020 253)",
+          "oklch(26% 0.020 253)",
+          "oklch(37% 0.020 253)",
+          "oklch(48% 0.020 253)",
+          "oklch(59% 0.020 253)",
+          "oklch(70% 0.020 253)",
+          "oklch(82% 0.020 253)",
+          "oklch(95% 0.020 253)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Validator Ink",
+        "canonical": "#0E1A2B",
+        "tonalRamp": [
+          "oklch(15% 0.038 257)",
+          "oklch(26% 0.038 257)",
+          "oklch(37% 0.038 257)",
+          "oklch(48% 0.038 257)",
+          "oklch(59% 0.038 257)",
+          "oklch(70% 0.038 257)",
+          "oklch(82% 0.038 257)",
+          "oklch(95% 0.038 257)"
+        ]
+      },
+      "muted-slate": {
+        "role": "neutral",
+        "displayName": "Muted Slate",
+        "canonical": "#5A6779",
+        "tonalRamp": [
+          "oklch(15% 0.033 257)",
+          "oklch(26% 0.033 257)",
+          "oklch(37% 0.033 257)",
+          "oklch(48% 0.033 257)",
+          "oklch(59% 0.033 257)",
+          "oklch(70% 0.033 257)",
+          "oklch(82% 0.033 257)",
+          "oklch(95% 0.033 257)"
+        ]
+      },
+      "ink-text": {
+        "role": "neutral",
+        "displayName": "Screen Text",
+        "canonical": "#F3F6FA",
+        "tonalRamp": [
+          "oklch(15% 0.006 255)",
+          "oklch(26% 0.006 255)",
+          "oklch(37% 0.006 255)",
+          "oklch(48% 0.006 255)",
+          "oklch(59% 0.006 255)",
+          "oklch(70% 0.006 255)",
+          "oklch(82% 0.006 255)",
+          "oklch(95% 0.006 255)"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Screen Muted",
+        "canonical": "#9FB0C6",
+        "tonalRamp": [
+          "oklch(15% 0.037 255)",
+          "oklch(26% 0.037 255)",
+          "oklch(37% 0.037 255)",
+          "oklch(48% 0.037 255)",
+          "oklch(59% 0.037 255)",
+          "oklch(70% 0.037 255)",
+          "oklch(82% 0.037 255)",
+          "oklch(95% 0.037 255)"
+        ]
+      },
+      "asphalt": {
+        "role": "neutral",
+        "displayName": "Asphalt",
+        "canonical": "#2B3748",
+        "tonalRamp": [
+          "oklch(15% 0.034 257)",
+          "oklch(26% 0.034 257)",
+          "oklch(37% 0.034 257)",
+          "oklch(48% 0.034 257)",
+          "oklch(59% 0.034 257)",
+          "oklch(70% 0.034 257)",
+          "oklch(82% 0.034 257)",
+          "oklch(95% 0.034 257)"
+        ]
+      },
+      "bar-neutral": {
+        "role": "neutral",
+        "displayName": "Bar Neutral",
+        "canonical": "#AEB9C6",
+        "tonalRamp": [
+          "oklch(15% 0.022 253)",
+          "oklch(26% 0.022 253)",
+          "oklch(37% 0.022 253)",
+          "oklch(48% 0.022 253)",
+          "oklch(59% 0.022 253)",
+          "oklch(70% 0.022 253)",
+          "oklch(82% 0.022 253)",
+          "oklch(95% 0.022 253)"
+        ]
+      },
+      "metro-red": {
+        "role": "neutral",
+        "displayName": "Metro Red",
+        "canonical": "#D6403A",
+        "tonalRamp": [
+          "oklch(15% 0.043 27)",
+          "oklch(26% 0.073 27)",
+          "oklch(37% 0.102 27)",
+          "oklch(48% 0.131 27)",
+          "oklch(59% 0.139 27)",
+          "oklch(70% 0.110 27)",
+          "oklch(82% 0.078 27)",
+          "oklch(95% 0.043 27)"
+        ]
+      },
+      "bus-steel-blue": {
+        "role": "neutral",
+        "displayName": "Bus Steel-Blue",
+        "canonical": "#6683A8",
+        "tonalRamp": [
+          "oklch(15% 0.043 255)",
+          "oklch(26% 0.066 255)",
+          "oklch(37% 0.066 255)",
+          "oklch(48% 0.066 255)",
+          "oklch(59% 0.066 255)",
+          "oklch(70% 0.066 255)",
+          "oklch(82% 0.066 255)",
+          "oklch(95% 0.043 255)"
+        ]
+      },
+      "bike-green": {
+        "role": "neutral",
+        "displayName": "Bike Green",
+        "canonical": "#12A150",
+        "tonalRamp": [
+          "oklch(15% 0.043 151)",
+          "oklch(26% 0.073 151)",
+          "oklch(37% 0.102 151)",
+          "oklch(48% 0.131 151)",
+          "oklch(59% 0.139 151)",
+          "oklch(70% 0.110 151)",
+          "oklch(82% 0.078 151)",
+          "oklch(95% 0.043 151)"
+        ]
+      },
+      "parking-mps": {
+        "role": "neutral",
+        "displayName": "MPS Green",
+        "canonical": "#16864A",
+        "tonalRamp": [
+          "oklch(15% 0.043 153)",
+          "oklch(26% 0.073 153)",
+          "oklch(37% 0.102 153)",
+          "oklch(48% 0.131 153)",
+          "oklch(59% 0.132 153)",
+          "oklch(70% 0.110 153)",
+          "oklch(82% 0.078 153)",
+          "oklch(95% 0.043 153)"
+        ]
+      },
+      "parking-mpv": {
+        "role": "neutral",
+        "displayName": "MPV Green",
+        "canonical": "#56C487",
+        "tonalRamp": [
+          "oklch(15% 0.043 156)",
+          "oklch(26% 0.073 156)",
+          "oklch(37% 0.102 156)",
+          "oklch(48% 0.131 156)",
+          "oklch(59% 0.135 156)",
+          "oklch(70% 0.110 156)",
+          "oklch(82% 0.078 156)",
+          "oklch(95% 0.043 156)"
+        ]
+      },
+      "ayna-teal": {
+        "role": "neutral",
+        "displayName": "AYNA Teal",
+        "canonical": "#0A8C8C",
+        "tonalRamp": [
+          "oklch(15% 0.043 195)",
+          "oklch(26% 0.073 195)",
+          "oklch(37% 0.097 195)",
+          "oklch(48% 0.097 195)",
+          "oklch(59% 0.097 195)",
+          "oklch(70% 0.097 195)",
+          "oklch(82% 0.078 195)",
+          "oklch(95% 0.043 195)"
+        ]
+      },
+      "rail-grey": {
+        "role": "neutral",
+        "displayName": "Rail Grey",
+        "canonical": "#5F6B78",
+        "tonalRamp": [
+          "oklch(15% 0.025 250)",
+          "oklch(26% 0.025 250)",
+          "oklch(37% 0.025 250)",
+          "oklch(48% 0.025 250)",
+          "oklch(59% 0.025 250)",
+          "oklch(70% 0.025 250)",
+          "oklch(82% 0.025 250)",
+          "oklch(95% 0.025 250)"
+        ]
+      },
+      "rail-dark": {
+        "role": "neutral",
+        "displayName": "Rail Dark",
+        "canonical": "#2A323B",
+        "tonalRamp": [
+          "oklch(15% 0.020 251)",
+          "oklch(26% 0.020 251)",
+          "oklch(37% 0.020 251)",
+          "oklch(48% 0.020 251)",
+          "oklch(59% 0.020 251)",
+          "oklch(70% 0.020 251)",
+          "oklch(82% 0.020 251)",
+          "oklch(95% 0.020 251)"
+        ]
+      },
+      "live-bus-amber": {
+        "role": "neutral",
+        "displayName": "Live Amber",
+        "canonical": "#FFB020",
+        "tonalRamp": [
+          "oklch(15% 0.043 75)",
+          "oklch(26% 0.073 75)",
+          "oklch(37% 0.102 75)",
+          "oklch(48% 0.131 75)",
+          "oklch(59% 0.139 75)",
+          "oklch(70% 0.110 75)",
+          "oklch(82% 0.078 75)",
+          "oklch(95% 0.043 75)"
+        ]
+      },
+      "basemap-land": {
+        "role": "neutral",
+        "displayName": "Basemap Land",
+        "canonical": "#EDF1F5",
+        "tonalRamp": [
+          "oklch(15% 0.007 248)",
+          "oklch(26% 0.007 248)",
+          "oklch(37% 0.007 248)",
+          "oklch(48% 0.007 248)",
+          "oklch(59% 0.007 248)",
+          "oklch(70% 0.007 248)",
+          "oklch(82% 0.007 248)",
+          "oklch(95% 0.007 248)"
+        ]
+      },
+      "basemap-water": {
+        "role": "neutral",
+        "displayName": "Basemap Water",
+        "canonical": "#C6D6E6",
+        "tonalRamp": [
+          "oklch(15% 0.028 248)",
+          "oklch(26% 0.028 248)",
+          "oklch(37% 0.028 248)",
+          "oklch(48% 0.028 248)",
+          "oklch(59% 0.028 248)",
+          "oklch(70% 0.028 248)",
+          "oklch(82% 0.028 248)",
+          "oklch(95% 0.028 248)"
+        ]
+      },
+      "basemap-park": {
+        "role": "neutral",
+        "displayName": "Basemap Park",
+        "canonical": "#DCE9DF",
+        "tonalRamp": [
+          "oklch(15% 0.019 153)",
+          "oklch(26% 0.019 153)",
+          "oklch(37% 0.019 153)",
+          "oklch(48% 0.019 153)",
+          "oklch(59% 0.019 153)",
+          "oklch(70% 0.019 153)",
+          "oklch(82% 0.019 153)",
+          "oklch(95% 0.019 153)"
+        ]
+      },
+      "basemap-building": {
+        "role": "neutral",
+        "displayName": "Basemap Building",
+        "canonical": "#DDE3EA",
+        "tonalRamp": [
+          "oklch(15% 0.012 252)",
+          "oklch(26% 0.012 252)",
+          "oklch(37% 0.012 252)",
+          "oklch(48% 0.012 252)",
+          "oklch(59% 0.012 252)",
+          "oklch(70% 0.012 252)",
+          "oklch(82% 0.012 252)",
+          "oklch(95% 0.012 252)"
+        ]
+      },
+      "basemap-road": {
+        "role": "neutral",
+        "displayName": "Basemap Road",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "oklch(15% 0.000 90)",
+          "oklch(26% 0.000 90)",
+          "oklch(37% 0.000 90)",
+          "oklch(48% 0.000 90)",
+          "oklch(59% 0.000 90)",
+          "oklch(70% 0.000 90)",
+          "oklch(82% 0.000 90)",
+          "oklch(95% 0.000 90)"
+        ]
+      },
+      "basemap-label": {
+        "role": "neutral",
+        "displayName": "Basemap Label",
+        "canonical": "#76849A",
+        "tonalRamp": [
+          "oklch(15% 0.037 259)",
+          "oklch(26% 0.037 259)",
+          "oklch(37% 0.037 259)",
+          "oklch(48% 0.037 259)",
+          "oklch(59% 0.037 259)",
+          "oklch(70% 0.037 259)",
+          "oklch(82% 0.037 259)",
+          "oklch(95% 0.037 259)"
+        ]
+      }
+    },
+    "heatScale": {
+      "name": "unserved-demand",
+      "purpose": "Sequential YlOrRd-derived ramp for unserved demand on the map only; classes 0-1 (below median) transparent.",
+      "stops": [
+        "rgba(0,0,0,0)",
+        "rgba(0,0,0,0)",
+        "rgba(253,214,150,0.2)",
+        "rgba(250,176,104,0.35)",
+        "rgba(240,128,74,0.5)",
+        "rgba(212,76,48,0.66)"
+      ]
+    },
+    "typographyMeta": {
+      "wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "AYAN wordmark in the brand card only."
+      },
+      "lcd": {
+        "displayName": "LCD",
+        "purpose": "Decisive figure on the ink validator screen (2.4rem on the dashboard KPI board)."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Report-page titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Inspector subject and dashboard section headings."
+      },
+      "title-sm": {
+        "displayName": "Title Small",
+        "purpose": "Card titles: layer card, build-sequence strip."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Tabs, evidence rows, layer names; 600 for buttons and nav."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Sentence-case group headings, screen tags, KPI sources."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Road-strip stop names, legend ticks, provenance badges."
+      }
+    },
+    "shadows": [
+      {
+        "name": "screen-recess",
+        "value": "inset 0 0 0 1px rgba(255,255,255,0.06), inset 0 10px 24px -14px rgba(0,0,0,0.6)",
+        "purpose": "Validator screen only."
+      },
+      {
+        "name": "segment-lift",
+        "value": "0 1px 2px rgba(14,26,43,0.12), 0 0 0 1px #D3DAE3",
+        "purpose": "Active slot in a segmented control."
+      },
+      {
+        "name": "led-halo",
+        "value": "0 0 0 3px color-mix(in srgb, currentColor 18%, transparent)",
+        "purpose": "Status LEDs."
+      }
+    ],
+    "motion": [
+      {
+        "name": "control",
+        "value": "160ms ease-out",
+        "purpose": "Button and segment background/colour transitions; 1px press."
+      },
+      {
+        "name": "ease-validator",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Tap ripple and verdict strip."
+      },
+      {
+        "name": "tap-pulse",
+        "value": "900ms infinite, second ring offset 450ms",
+        "purpose": "Cobalt rings while the engine computes a what-if."
+      },
+      {
+        "name": "tap-settle",
+        "value": "1100ms forwards",
+        "purpose": "Ring turns green (placed) or red (refused) and expands to 2.2x."
+      },
+      {
+        "name": "verdict-rise",
+        "value": "700ms",
+        "purpose": "Verdict strip enters once from 4px above."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "none",
+        "purpose": "All transitions and animations off; tap ripple hidden."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single cobalt action per region (AYAN Kopilot, test your own hub).",
+      "html": "<button class=\"ds-btn-primary\">Öz hub-unuzu yoxlayın</button>",
+      "css": ".ds-btn-primary { background: #1F5BB5; color: #FFFFFF; border: 0; border-radius: 9px; padding: 10px 16px; font: 700 14px/1.2 Manrope, system-ui, sans-serif; cursor: pointer; transition: background-color 160ms ease-out, transform 160ms ease-out; } .ds-btn-primary:hover { background: #17468C; } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 2px solid #1F5BB5; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.55; cursor: progress; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary cobalt action, e.g. generating the AI justification memo.",
+      "html": "<button class=\"ds-btn-outline\">Əsaslandırma sənədi hazırla (AI)</button>",
+      "css": ".ds-btn-outline { background: #FFFFFF; color: #1F5BB5; border: 1px solid #1F5BB5; border-radius: 9px; padding: 8px 12px; font: 600 14px/1.2 Manrope, system-ui, sans-serif; cursor: pointer; transition: background-color 160ms ease-out; } .ds-btn-outline:hover { background: #E8EFFA; } .ds-btn-outline:focus-visible { outline: 2px solid #1F5BB5; outline-offset: 2px; }"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Seam-bordered utility action: fly to, export, remove, reset.",
+      "html": "<button class=\"ds-btn-quiet\">Xəritədə göstər</button>",
+      "css": ".ds-btn-quiet { background: #FFFFFF; color: #0E1A2B; border: 1px solid #D3DAE3; border-radius: 9px; padding: 8px 12px; font: 600 13px/1.2 Manrope, system-ui, sans-serif; cursor: pointer; transition: background-color 160ms ease-out; } .ds-btn-quiet:hover { background: #F2F5F9; } .ds-btn-quiet:focus-visible { outline: 2px solid #1F5BB5; outline-offset: 2px; }"
+    },
+    {
+      "name": "Segmented Tabs",
+      "kind": "nav",
+      "refersTo": "segmented",
+      "description": "Section tabs and the 2D/3D toggle: sunk tray, white active slot with a 1px lift.",
+      "html": "<nav class=\"ds-seg-card\"><div class=\"ds-seg\"><button aria-current=\"true\">Xəritə və hub planı</button><button>Rəhbərlik paneli</button><button>Data</button></div></nav>",
+      "css": ".ds-seg-card { display: inline-block; background: #FFFFFF; border: 1px solid #C9D2DD; border-radius: 14px; padding: 4px; } .ds-seg { display: flex; background: #F2F5F9; border: 1px solid #D3DAE3; border-radius: 11px; padding: 3px; } .ds-seg button { border: 0; background: transparent; color: #5A6779; border-radius: 8px; padding: 6px 14px; font: 600 13.5px/1.2 Manrope, system-ui, sans-serif; cursor: pointer; transition: background-color 160ms ease-out, color 160ms ease-out; } .ds-seg button:hover { color: #0E1A2B; } .ds-seg button[aria-current=\"true\"] { background: #FFFFFF; color: #0E1A2B; box-shadow: 0 1px 2px rgba(14,26,43,0.12), 0 0 0 1px #D3DAE3; } .ds-seg button:focus-visible { outline: 2px solid #1F5BB5; outline-offset: 2px; }"
+    },
+    {
+      "name": "Card with Evidence Rows",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Floating white card held by a 1px edge, with hairline evidence rows and provenance badges.",
+      "html": "<section class=\"ds-card\"><h2 class=\"ds-card-title\">20 Yanvar m/st., Çıxış 5</h2><dl><div class=\"ds-row\"><dt>Yeni xidmət alan sakin</dt><dd>~200 <span class=\"ds-badge ds-model\"><i></i>model</span></dd></div><div class=\"ds-row\"><dt>Metro</dt><dd>20 Yanvar <span class=\"ds-badge ds-measured\"><i></i>ölçülmüş</span></dd></div><div class=\"ds-row\"><dt>CO₂ qənaəti</dt><dd>1,0 t/il <span class=\"ds-badge ds-scenario\"><i></i>ssenari</span></dd></div></dl></section>",
+      "css": ".ds-card { background: #FFFFFF; border: 1px solid #C9D2DD; border-radius: 14px; padding: 16px; width: 340px; color: #0E1A2B; font-family: Manrope, system-ui, sans-serif; } .ds-card-title { margin: 0 0 8px; font-size: 18px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.25; } .ds-card dl { margin: 0; } .ds-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 7px 0; border-bottom: 1px solid #D3DAE3; font-size: 13.5px; } .ds-row:last-child { border-bottom: 0; } .ds-row dt { color: #5A6779; } .ds-row dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; } .ds-badge { margin-left: 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600; vertical-align: middle; } .ds-badge i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; } .ds-model { color: #1F5BB5; } .ds-measured { color: #12A150; } .ds-scenario { color: #8E9AA8; } .ds-scenario i { background: transparent; box-shadow: inset 0 0 0 1.5px currentColor; }"
+    },
+    {
+      "name": "Validator Screen",
+      "kind": "custom",
+      "refersTo": "validator-screen",
+      "description": "Recessed ink panel holding the view's decisive figure in 800-weight tabular numerals.",
+      "html": "<div class=\"ds-screen\"><p class=\"ds-lcd\">~200<span>sakin</span></p><p class=\"ds-cap\">ilk dəfə 5 dəqiqəlik piyada məsafəsində velo/scooter parkinqi qazanır</p><div class=\"ds-tag\"><span class=\"ds-led\"></span>Tikinti sırası #1 · tip L</div></div>",
+      "css": ".ds-screen { background: #0E1A2B; color: #F3F6FA; border-radius: 10px; padding: 14px 16px 12px; width: 320px; font-family: Manrope, system-ui, sans-serif; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), inset 0 10px 24px -14px rgba(0,0,0,0.6); } .ds-lcd { margin: 0; font-size: 2.9rem; font-weight: 800; line-height: 0.95; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; } .ds-lcd span { margin-left: 4px; font-size: 1.15rem; font-weight: 700; color: #9FB0C6; } .ds-cap { margin: 8px 0 0; font-size: 13px; line-height: 1.35; color: rgba(243,246,250,0.85); } .ds-tag { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; color: #9FB0C6; } .ds-led { width: 8px; height: 8px; border-radius: 50%; color: #12A150; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent); }"
+    },
+    {
+      "name": "Verdict Strip",
+      "kind": "custom",
+      "refersTo": "verdict-ok",
+      "description": "The inspector's answer to a what-if tap: green confirm or steel-bordered caution, rising in once.",
+      "html": "<div class=\"ds-verdict ds-ok\"><svg viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path d=\"M3.5 8.5 6.5 11.5 12.5 4.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span>Hub səkiyə yerləşdirildi</span></div><div class=\"ds-verdict ds-warn\"><svg viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path d=\"M8 3.5v5.5M8 12v.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\"/></svg><span>Yaxınlıqda mövcud hub var</span></div>",
+      "css": ".ds-verdict { display: flex; align-items: flex-start; gap: 8px; width: 300px; margin-top: 8px; padding: 8px 10px; border: 1px solid transparent; border-radius: 9px; font: 600 12.5px/1.35 Manrope, system-ui, sans-serif; animation: ds-verdict 700ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-verdict svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; } .ds-ok { color: #12A150; background: #E4F5EB; } .ds-warn { color: #0E1A2B; background: transparent; border-color: #8E9AA8; } @keyframes ds-verdict { from { transform: translateY(-4px); opacity: 0.2; } to { transform: none; opacity: 1; } } @media (prefers-reduced-motion: reduce) { .ds-verdict { animation: none; } }"
+    },
+    {
+      "name": "Road Strip Stops",
+      "kind": "custom",
+      "refersTo": "hub-stop",
+      "description": "Build sequence drawn as the logo's road: asphalt band, white dashed lane, cobalt hub stops encoded by ring.",
+      "html": "<ol class=\"ds-road\"><li><span class=\"ds-band\"></span><button class=\"ds-stop ds-sel\">1</button></li><li><span class=\"ds-band\"></span><button class=\"ds-stop ds-new\">2</button></li><li><span class=\"ds-band\"></span><button class=\"ds-stop ds-up\">3</button></li><li><button class=\"ds-stop ds-int\">4</button></li></ol>",
+      "css": ".ds-road { display: flex; list-style: none; margin: 0; padding: 12px 20px; width: 320px; background: #FFFFFF; border: 1px solid #C9D2DD; border-radius: 14px; } .ds-road li { position: relative; flex: 1; display: flex; justify-content: center; } .ds-band { position: absolute; left: 50%; top: 15px; width: 100%; height: 10px; transform: translateY(-50%); background: #2B3748; border-radius: 9999px; } .ds-band::after { content: \"\"; position: absolute; left: 8px; right: 8px; top: 50%; height: 1.5px; transform: translateY(-50%); background: repeating-linear-gradient(90deg, #fff 0 6px, transparent 6px 11px); opacity: 0.9; } .ds-stop { position: relative; z-index: 1; width: 30px; height: 30px; border: 0; border-radius: 50%; display: grid; place-items: center; font: 800 12px/1 Manrope, system-ui, sans-serif; font-variant-numeric: tabular-nums; cursor: pointer; transition: transform 150ms ease-out; } .ds-stop:hover { transform: scale(1.1); } .ds-stop:focus-visible { outline: 2px solid #1F5BB5; outline-offset: 2px; } .ds-new { background: #1F5BB5; color: #fff; box-shadow: 0 0 0 2.5px #fff; } .ds-up { background: #fff; color: #1F5BB5; box-shadow: inset 0 0 0 2.6px #1F5BB5, 0 0 0 2px #fff; } .ds-int { background: #1F5BB5; color: #fff; box-shadow: inset 0 0 0 2.5px #fff, 0 0 0 3px #8E9AA8, 0 0 0 4.5px #fff; } .ds-sel { background: #0E1A2B; color: #fff; box-shadow: 0 0 0 3px #1F5BB5; }"
+    },
+    {
+      "name": "Engine LED Chip",
+      "kind": "chip",
+      "refersTo": "card",
+      "description": "Small card in the top bar reporting engine status with a validator LED.",
+      "html": "<span class=\"ds-status\"><span class=\"ds-status-led\"></span>Engine qoşulub</span>",
+      "css": ".ds-status { display: inline-flex; align-items: center; gap: 8px; background: #FFFFFF; border: 1px solid #C9D2DD; border-radius: 14px; padding: 10px 12px; font: 600 12.5px/1 Manrope, system-ui, sans-serif; color: #0E1A2B; } .ds-status-led { width: 8px; height: 8px; border-radius: 50%; color: #12A150; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The BakıKart Validator",
+    "overview": "**Creative North Star: \"The BakıKart Validator\"**\n\nEvery hub is read the way a commuter reads a turnstile: one tap, one binary-clear answer, the decisive number first. The world is a cool, lit card-stock ground under a full-bleed light map, with pure white card panels floating at the edges, each cut by a single 1px steel seam rather than a shadow. Inside the inspector and the dashboard, an inset ink panel plays the validator's screen: dark, recessed, carrying one huge tabular figure and a short sentence of meaning.\n\nColour is a vocabulary, not decoration. BakıKart cobalt (taken from the AYAN mark) owns the brand, the primary action and every proposed hub; green confirms or marks a measured fact; red denies; steel outlines anything that is a scenario. Unserved demand is a warm amber-to-coral heat that lives only on the map. Density is a desk console: persistent panels, hairline rows, small but legible type, nothing animated except the tap.\n\nThe world refuses the dark neon control room and the generic white SaaS GIS panel. It stays light because a lit hall washes out dark UI, and it stays plain because every number has to read as evidence, not marketing.",
+    "keyCharacteristics": [
+      "Light card-stock ground, white ID-1-cornered cards, 1px steel seams, no decorative shadow.",
+      "One inset ink validator screen per view, holding the key figure in 800-weight tabular numerals.",
+      "Cobalt is brand, action and \"model\"; green is \"measured/confirmed\"; red is \"denied\"; steel is \"scenario\".",
+      "The build sequence is drawn as the logo's road: asphalt band, white dashed lane, cobalt stops.",
+      "One signature motion: the what-if tap ripple on the map and the verdict strip that answers it."
+    ],
+    "rules": [
+      {
+        "name": "The Validator Vocabulary Rule",
+        "body": "Cobalt means model or AYAN's proposal, green means measured or confirmed, red means denied, steel means scenario. A colour that carries one of these meanings never appears with another.",
+        "section": "colors"
+      },
+      {
+        "name": "The All-Cobalt Hub Rule",
+        "body": "Every hub type is cobalt; type is encoded by form, not hue: new is solid cobalt with a white ring, upgrade is a white centre with a cobalt ring, integrate is solid cobalt with a white ring and a steel outer ring. The selected hub turns ink with a cobalt halo.",
+        "section": "colors"
+      },
+      {
+        "name": "The Heat Stays On The Map Rule",
+        "body": "The amber-to-coral ramp is reserved for unserved demand. It never colours UI chrome, buttons or text.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Figures Rule",
+        "body": "Every number that can change or be compared is set with tabular numerals, from the LCD figure to the stop percentages under the road strip.",
+        "section": "typography"
+      },
+      {
+        "name": "The One-Wordmark Rule",
+        "body": "Montserrat is loaded at a single weight for the AYAN wordmark and is never used for headings or UI.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Scale Rule",
+        "body": "Comparison bars share a single fixed scale so the AYAN row and every alternative are measured against the same maximum; the AYAN bar is cobalt and every other bar is bar-neutral.",
+        "section": "layout"
+      },
+      {
+        "name": "The Selection Dims The Rest Rule",
+        "body": "When a hub is selected, every other map layer drops to half opacity so the chosen hub and its walking zone carry the scene.",
+        "section": "layout"
+      },
+      {
+        "name": "The Seam Not Shadow Rule",
+        "body": "Floating cards are held by a 1px border, never a drop shadow. If a card disappears against the map, darken the edge, do not add blur.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do put the one decisive number of a view on an ink validator screen in 800-weight tabular numerals, with its unit and a one-sentence caption.",
+      "Do attach a provenance badge (measured green, model cobalt, scenario steel) to every evidence value.",
+      "Do separate floating cards from the map with the 1px card-edge border and a 16px gutter.",
+      "Do encode hub type by ring and fill within cobalt, and dim all other layers to 50% when a hub is selected.",
+      "Do draw every comparison at one fixed scale, AYAN in cobalt and every alternative in bar-neutral.",
+      "Do keep Baku's real signage colours for metro, bus, bike, AYNA centres and rail on the map."
+    ],
+    "donts": [
+      "Don't add drop shadows to cards or panels; depth comes from seams, tone and the recessed screen.",
+      "Don't use cobalt for anything that is not AYAN's brand, proposal, model output or primary action.",
+      "Don't let the amber-to-coral heat or the transport hues leak into UI chrome.",
+      "Don't set headings or UI in Montserrat; it is the wordmark's face only.",
+      "Don't turn the ground dark; the world is a light card-stock room by design.",
+      "Don't animate anything beyond the tap ripple, the verdict rise and 160ms control transitions, and drop all of them under reduced motion."
+    ]
+  }
+}

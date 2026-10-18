@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api, EngineOffline, post, type StaticData } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { approx, meters, pct, tons } from "@/lib/format";
-import { C } from "@/lib/theme";
+import { C, actionStyle } from "@/lib/theme";
 import type { AparLive, Hub, WhatIfHub } from "@/lib/types";
 import { getMap } from "./MapView";
 import { MiniMd } from "./Copilot";
@@ -35,13 +35,13 @@ function MemoButton({ hub }: { hub: Hub }) {
   };
   return (
     <div className="mt-3">
-      <button onClick={run} disabled={busy} className="w-full rounded border border-[var(--hub)] px-3 py-1.5 text-sm text-[var(--hub)] hover:bg-[var(--hub)] hover:text-[var(--bg)] disabled:opacity-50">
+      <button onClick={run} disabled={busy} className="w-full rounded-[9px] border border-[var(--cobalt)] px-3 py-2 text-sm font-semibold text-[var(--cobalt)] transition-colors hover:bg-[var(--cobalt-tint)] disabled:opacity-50">
         {busy ? "Sənəd hazırlanır…" : "Əsaslandırma sənədi hazırla (AI)"}
       </button>
       {md && (
-        <div className="mt-2 max-h-72 overflow-y-auto rounded border border-[var(--line)] bg-[var(--bg)]/60 p-3">
+        <div className="mt-2 max-h-72 overflow-y-auto rounded-[10px] border border-[var(--line)] bg-[var(--surface2)] p-3">
           <MiniMd text={md} />
-          <button onClick={download} className="mt-2 text-xs text-[var(--hub)] underline">.md kimi yüklə</button>
+          <button onClick={download} className="mt-2 text-xs font-semibold text-[var(--cobalt)] underline">.md kimi yüklə</button>
         </div>
       )}
     </div>
@@ -51,25 +51,51 @@ function MemoButton({ hub }: { hub: Hub }) {
 const STATUSES = ["Təklif", "Təsdiq gözləyir", "Təsdiqləndi", "Rədd edildi"];
 type Src = "measured" | "model" | "scenario";
 const SRC: Record<Src, { c: string; t: string }> = {
-  measured: { c: C.bike, t: "ölçülmüş" },
-  model: { c: C.hub, t: "model" },
-  scenario: { c: "#C8D3D8", t: "ssenari" },
+  measured: { c: C.ok, t: "ölçülmüş" },
+  model: { c: C.cobalt, t: "model" },
+  scenario: { c: "#8E9AA8", t: "ssenari" },
 };
 
 function Badge({ s }: { s: Src }) {
   return (
-    <span className="ml-1.5 inline-flex items-center gap-1 align-middle text-[10px] text-[var(--muted)]" title={SRC[s].t}>
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: SRC[s].c }} />
+    <span className="ml-1.5 inline-flex items-center gap-1 align-middle text-[10.5px] font-semibold" style={{ color: SRC[s].c }} title={SRC[s].t}>
+      <span className="h-1.5 w-1.5 rounded-full" style={s === "scenario" ? { boxShadow: `inset 0 0 0 1.5px ${SRC[s].c}` } : { background: SRC[s].c }} />
       {SRC[s].t}
     </span>
   );
 }
 
-function Row({ k, v, s, hint }: { k: string; v: string; s?: Src; hint?: string }) {
+function Row({ k, v, s, hint, sub }: { k: string; v: string; s?: Src; hint?: string; sub?: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-[var(--line)]/60 py-1.5 text-sm">
-      <dt className="text-[var(--muted)]" title={hint}>{k}</dt>
-      <dd className="text-right tabular-nums">{v}{s && <Badge s={s} />}</dd>
+    <div className="flex items-baseline justify-between gap-3 border-b border-[var(--line)] py-[7px] text-[13.5px] last:border-b-0">
+      <dt className="text-[var(--muted)]" title={hint}>{k}{sub && <span className="mt-0.5 block text-[12px] text-[var(--muted)]/90">{sub}</span>}</dt>
+      <dd className="shrink-0 whitespace-nowrap text-right font-semibold tabular-nums">{v}{s && <Badge s={s} />}</dd>
+    </div>
+  );
+}
+
+/** Validator ekranı: mürəkkəb lövhə, həlledici rəqəm, qısa izah */
+function Screen({ value, unit, caption, tag }: { value: string; unit?: string; caption: React.ReactNode; tag?: React.ReactNode }) {
+  return (
+    <div className="ayan-screen px-4 pb-3 pt-3.5">
+      <p className="ayan-lcd text-[2.9rem]">{value}{unit && <span className="ml-1 text-[1.15rem] font-bold text-[var(--ink-muted)]">{unit}</span>}</p>
+      <p className="mt-2 text-[13px] leading-snug text-[var(--ink-text)]/85">{caption}</p>
+      {tag && <div className="mt-2.5 flex items-center gap-2 border-t border-white/10 pt-2 text-[11.5px] font-semibold text-[var(--ink-muted)]">{tag}</div>}
+    </div>
+  );
+}
+
+/** Validator hökmü: yaşıl (yerləşdi) və ya kəhrəba (xəbərdarlıq) zolaq */
+function Verdict({ tone, children }: { tone: "ok" | "warn"; children: React.ReactNode }) {
+  const c = tone === "ok" ? { fg: "var(--ok)", bg: "var(--ok-tint)", bd: "transparent" } : { fg: "var(--text)", bg: "transparent", bd: "#8E9AA8" };
+  return (
+    <div className="ayan-verdict mt-2 flex items-start gap-2 rounded-[9px] border px-2.5 py-2 text-[12.5px] font-semibold leading-snug" style={{ color: c.fg, background: c.bg, borderColor: c.bd }}>
+      <svg aria-hidden viewBox="0 0 16 16" className="mt-[1px] h-4 w-4 shrink-0">
+        {tone === "ok"
+          ? <path d="M3.5 8.5 6.5 11.5 12.5 4.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          : <path d="M8 3.5v5.5M8 12v.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />}
+      </svg>
+      <span>{children}</span>
     </div>
   );
 }
@@ -136,9 +162,9 @@ function LiveArrivals({ lon, lat }: { lon: number; lat: number }) {
     .sort((a, b) => a.t - b.t)
     .slice(0, 6);
   return (
-    <div className="mt-3 rounded border border-[var(--line)] p-2.5">
-      <p className="flex items-center gap-2 text-xs font-semibold">
-        <span className={`h-1.5 w-1.5 rounded-full ${d.has_live ? "bg-[var(--bike)]" : "bg-[var(--muted)]"}`} />
+    <div className="mt-3 rounded-[10px] border border-[var(--line)] bg-[var(--surface2)] p-2.5">
+      <p className="flex items-center gap-2 text-xs font-bold">
+        <span className={`ayan-led ${d.has_live ? "text-[var(--ok)]" : "text-[var(--muted)]"}`} />
         Canlı gəlişlər · AYNA
       </p>
       {visits.length ? (
@@ -162,9 +188,9 @@ function AparSignal({ d }: { d: AparLive }) {
   if (!d?.has_live) return null;
   const types = Object.entries(d.by_type ?? {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(", ");
   return (
-    <div className="mt-3 rounded border border-[var(--line)] p-2.5">
-      <p className="flex items-center gap-2 text-xs font-semibold">
-        <span className="h-1.5 w-1.5 rounded-full bg-[var(--bike)]" />
+    <div className="mt-3 rounded-[10px] border border-[var(--line)] bg-[var(--surface2)] p-2.5">
+      <p className="flex items-center gap-2 text-xs font-bold">
+        <span className="ayan-led text-[var(--ok)]" />
         Canlı Apar sıxlığı · 400 m
       </p>
       <p className="mt-1.5 text-xs">
@@ -178,29 +204,32 @@ function AparSignal({ d }: { d: AparLive }) {
 function CityOverview({ data }: { data: StaticData }) {
   const m = data.metrics.hubs;
   const v = m.validation;
+  const ring = data.metrics.value?.ring_auc?.ayna_parkings;
   const set = useStore((s) => s.set);
   return (
     <div className="space-y-4">
-      <div>
-        <p className="font-display text-[2.6rem] font-bold leading-none tabular-nums">{pct(m.city.pop_without_parking_share, 0)}</p>
-        <p className="mt-1.5 text-sm leading-snug">
-          Analiz zonasındakı sakinlərin ({approx(m.city.pop_without_parking_400m)} nəfər) 5 dəqiqəlik piyada məsafəsində heç bir velosiped və ya scooter parkinqi yoxdur.
-        </p>
-      </div>
+      <Screen value={pct(m.city.pop_without_parking_share, 0)}
+        tag={<><span className="ayan-led text-[var(--deny)]" /> Bakı · son kilometr boşluğu</>}
+        caption={<>Analiz zonasındakı sakinlərin (<b className="text-white">{approx(m.city.pop_without_parking_400m)} nəfər</b>) 5 dəqiqəlik piyada məsafəsində heç bir velosiped və ya scooter parkinqi yoxdur.</>} />
       <dl>
         <Row k="Metro çıxışı, yanında parkinq yoxdur" v={`${m.city.metro_exits_without_parking_400m} / ${m.city.metro_exits_total}`} s="measured" />
-        <Row k="MPV məntəqələri MPS şəbəkəsinin yanında" v={`${pct(v.mpv_vs_mps.share_within_400m)} (təsadüfi: ${pct(v.mpv_vs_mps.random_resident_share_within_400m)})`} s="measured"
+        <Row k="MPV məntəqələri MPS şəbəkəsinin yanında" sub={`təsadüfi sakin üçün ${pct(v.mpv_vs_mps.random_resident_share_within_400m)}`} v={pct(v.mpv_vs_mps.share_within_400m)} s="measured"
           hint="Yeni məntəqələr artıq xidmət olunan ərazilərdə toplanır" />
-        <Row k="Tələbat modeli AYNA seçimlərini tanıyır" v={`AUC ${String(v.demand_auc_within_8km.D).replace(".", ",")}`} s="model"
-          hint={`Mərkəzdən 8 km halqasında; təkcə mərkəzə yaxınlıq ${v.demand_auc_within_8km["yalnız_mərkəzə_yaxınlıq"]}, təkcə əhali ${v.demand_auc_within_8km.pop_n}`} />
+        {ring ? (
+          <Row k="Tələbat modeli AYNA seçimlərini tanıyır" v={`AUC ${ring.D.auc.toFixed(2).replace(".", ",")}`} s="model"
+            hint={`Mərkəz effekti çıxılmaqla (1 km halqalar); təkcə mərkəzə yaxınlıq ${ring["yalnız_mərkəzə_yaxınlıq"].auc.toFixed(2).replace(".", ",")}`} />
+        ) : (
+          <Row k="Tələbat modeli AYNA seçimlərini tanıyır" v={`AUC ${String(v.demand_auc_within_8km.D).replace(".", ",")}`} s="model"
+            hint={`Mərkəzdən 8 km halqasında; təkcə mərkəzə yaxınlıq ${v.demand_auc_within_8km["yalnız_mərkəzə_yaxınlıq"]}, təkcə əhali ${v.demand_auc_within_8km.pop_n}`} />
+        )}
         {v.official_hub_recall && (
-          <Row k="Model AYNA mübadilə mərkəzlərini özü tapır" v={`${Math.round(v.official_hub_recall.by_k["20"].model * v.official_hub_recall.n_official)} / ${v.official_hub_recall.n_official} (təsadüfi: ${(v.official_hub_recall.by_k["20"].random * v.official_hub_recall.n_official).toFixed(1).replace(".", ",")})`} s="model"
+          <Row k="Model AYNA mübadilə mərkəzlərini özü tapır" sub={`təsadüfi seçim: ${(v.official_hub_recall.by_k["20"].random * v.official_hub_recall.n_official).toFixed(1).replace(".", ",")}`} v={`${Math.round(v.official_hub_recall.by_k["20"].model * v.official_hub_recall.n_official)} / ${v.official_hub_recall.n_official}`} s="model"
             hint="Top-20 hub, rəsmi hub namizədləri çıxarılmaqla; model “hub” bayrağını bilmir" />
         )}
         <Row k="İlk 20 hub xidmətsiz tələbatı bağlayır" v={pct(m.mclp.share_closed["20"])} s="model" />
       </dl>
       <button onClick={() => set({ placing: true, toast: "Xəritədə hub qoymaq istədiyiniz yerə klikləyin" })}
-        className="w-full rounded border border-[var(--hub)] px-3 py-2 text-sm font-semibold text-[var(--hub)] hover:bg-[var(--hub)] hover:text-[var(--bg)]">
+        className="ayan-btn-primary w-full px-3 py-2.5 text-[14px]">
         Öz hub-unuzu yoxlayın
       </button>
       <p className="text-xs text-[var(--muted)]">Xəritədə hub-a və ya avtovağzala klikləyin: göstəricilər burada açılacaq.</p>
@@ -248,9 +277,9 @@ export default function Inspector({ data }: { data: StaticData }) {
   const removeWhatIf = (key: string) => s.set({ whatIf: s.whatIf.filter((x) => x.key !== key), selected: null });
 
   return (
-    <aside className="absolute right-4 top-20 z-20 max-h-[calc(100%-15rem)] w-[22rem] overflow-y-auto rounded-md bg-[var(--surface)]/95 p-4 shadow-xl ring-1 ring-[var(--line)]" aria-label="Göstəricilər">
+    <aside className="ayan-card absolute right-4 top-[5.25rem] z-20 max-h-[calc(100%-16rem)] w-[22.5rem] overflow-y-auto p-4" aria-label="Göstəricilər">
       {sel && (
-        <button onClick={() => s.set({ selected: null })} className="mb-2 text-xs text-[var(--muted)] hover:text-[var(--text)]">← Şəhər üzrə göstəricilər</button>
+        <button onClick={() => s.set({ selected: null })} className="mb-2.5 inline-flex items-center gap-1 text-[12.5px] font-semibold text-[var(--muted)] hover:text-[var(--cobalt)]"><svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5"><path d="M10 3.5 5.5 8 10 12.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>Şəhər üzrə göstəricilər</button>
       )}
 
       {!sel && <CityOverview data={data} />}
@@ -258,11 +287,12 @@ export default function Inspector({ data }: { data: StaticData }) {
       {hub && (
         <div>
           <div className="flex items-start gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full font-display text-base font-bold text-[var(--bg)]"
-              style={{ background: hub.action === "new" ? C.hub : hub.action === "integrate" ? C.integrate : C.upgrade }}>{hub.rank}</span>
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[15px] font-extrabold"
+              style={{ background: actionStyle(hub.action).fill, color: actionStyle(hub.action).text,
+                boxShadow: actionStyle(hub.action).outer ? `inset 0 0 0 3px #fff, 0 0 0 3px ${actionStyle(hub.action).outer}` : actionStyle(hub.action).ring === "#FFFFFF" ? "0 0 0 1px var(--line)" : `inset 0 0 0 3px ${actionStyle(hub.action).ring}` }}>{hub.rank}</span>
             <div>
-              <h2 className="font-display text-lg font-semibold leading-tight">{hub.label}</h2>
-              <p className="text-xs text-[var(--muted)]">
+              <h2 className="text-[18px] font-bold leading-tight tracking-tight">{hub.label}</h2>
+              <p className="mt-0.5 text-[12.5px] text-[var(--muted)]">
                 {{ new: "Yeni hub: 150 m daxilində parkinq yoxdur",
                    upgrade: "Hub-a çevrilmə: yaxındakı parkinq nəqliyyatla inteqrasiya olunur",
                    integrate: "AYNA mübadilə mərkəzinə mikromobillik inteqrasiyası" }[hub.action]}
@@ -272,7 +302,12 @@ export default function Inspector({ data }: { data: StaticData }) {
               </p>
             </div>
           </div>
-          <div className="mt-3"><HubMetrics h={hub} /></div>
+          <div className="mt-3">
+            <Screen value={approx(hub.pop_newly_served)} unit="sakin"
+              tag={<><span className="ayan-led text-[var(--ok)]" /> Tikinti sırası #{hub.rank} · tip {hub.type}</>}
+              caption="ilk dəfə 5 dəqiqəlik piyada məsafəsində velo/scooter parkinqi qazanır" />
+          </div>
+          <div className="mt-2"><HubMetrics h={hub} /></div>
           <LiveArrivals lon={hub.lon} lat={hub.lat} />
           {hub.stability != null && hub.rank <= 20 && (
             <Row k="Stabillik: çəkilər ±30% dəyişəndə top-20-də qalır" v={pct(hub.stability)} s="model" hint="500 təsadüfi ssenari" />
@@ -282,15 +317,15 @@ export default function Inspector({ data }: { data: StaticData }) {
             <label className="mt-3 block text-sm">
               <span className="text-[var(--muted)]">Təsdiq statusu</span>
               <select value={s.statuses[hub.id] ?? "Təklif"} onChange={(e) => setStatus(hub.id, e.target.value)} disabled={!s.engineOnline}
-                className="mt-1 w-full rounded border border-[var(--line)] bg-[var(--surface2)] px-2 py-1.5 disabled:opacity-50">
+                className="mt-1 w-full rounded-[9px] border border-[var(--line)] bg-[var(--surface)] px-2 py-2 font-semibold disabled:opacity-50">
                 {STATUSES.map((x) => <option key={x}>{x}</option>)}
               </select>
             </label>
           )}
           <div className="mt-3 flex gap-2">
-            <button onClick={() => fly(hub.lon, hub.lat)} className="flex-1 rounded border border-[var(--line)] px-3 py-1.5 text-sm hover:bg-[var(--surface2)]">Xəritədə göstər</button>
+            <button onClick={() => fly(hub.lon, hub.lat)} className="flex-1 rounded-[9px] border border-[var(--line)] px-3 py-2 text-[13px] font-semibold hover:bg-[var(--surface2)]">Xəritədə göstər</button>
             <a href={`https://www.google.com/maps/@${hub.lat},${hub.lon},60m/data=!3m1!1e3`} target="_blank" rel="noreferrer"
-              className="flex-1 rounded border border-[var(--line)] px-3 py-1.5 text-center text-sm hover:bg-[var(--surface2)]">Peyk görüntüsündə yoxla</a>
+              className="flex-1 rounded-[9px] border border-[var(--line)] px-3 py-2 text-center text-[13px] font-semibold hover:bg-[var(--surface2)]">Peyk görüntüsündə yoxla</a>
           </div>
           {s.engineOnline && <MemoButton hub={hub} />}
           {!s.optimized && <p className="mt-2 font-mono text-[10px] text-[var(--muted)]">{hub.id}</p>}
@@ -299,36 +334,41 @@ export default function Inspector({ data }: { data: StaticData }) {
 
       {wi && (
         <div>
-          <h2 className="font-display text-lg font-semibold">Sizin hub təklifiniz</h2>
+          <h2 className="text-[18px] font-bold tracking-tight">Sizin hub təklifiniz</h2>
           {offline ? (
             <p className="mt-2 text-sm text-[var(--muted)]">Geo Engine əlçatan deyil. Xəritədə 400 m düz xətt buferi göstərilir. Real küçə izoxronu və göstəricilər engine qoşulanda hesablanır.</p>
           ) : (
             <>
-              <p className="mt-1 text-xs text-[var(--muted)]">
-                Real piyada izoxronu {wi.ms} ms-də hesablandı.
-                {wi.moved_m > 0 && ` Hub icazəli yerə ${wi.moved_m} m köçürüldü.`}
-              </p>
+              <Verdict tone="ok" key={wi.key}>
+                Hub yerləşdirildi · real piyada izoxronu {wi.ms} ms
+                {wi.moved_m > 0 && <span className="font-medium"> · icazəli yerə {wi.moved_m} m köçürüldü</span>}
+              </Verdict>
               {!wi.near_transit_60m && (
-                <p className="mt-2 rounded border border-[var(--hub)]/60 px-2 py-1.5 text-xs text-[var(--hub)]">
-                  60 m daxilində metro, avtobus dayanacağı və ya avtovağzal yoxdur. Hub keçid nöqtəsi kimi zəif işləyəcək.
-                </p>
+                <Verdict tone="warn">60 m daxilində metro, avtobus dayanacağı və ya avtovağzal yoxdur. Hub keçid nöqtəsi kimi zəif işləyəcək.</Verdict>
               )}
-              <div className="mt-3"><HubMetrics h={wi} /></div>
+              <div className="mt-3">
+                <Screen value={approx(wi.pop_newly_served)} unit="sakin" tag={<><span className="ayan-led text-[var(--ok)]" /> Tip {wi.type} · {wi.docks} yer</>}
+                  caption="bu nöqtədə hub qurulsa, ilk dəfə 5 dəqiqəlik çıxış qazanır" />
+              </div>
+              <div className="mt-2"><HubMetrics h={wi} /></div>
               <AparSignal d={wi.apar_live} />
             </>
           )}
           <div className="mt-3 flex gap-2">
-            {!offline && <button onClick={() => saveWhatIf(wi)} className="flex-1 rounded bg-[var(--hub)] px-3 py-2 text-sm font-semibold text-[var(--bg)]">Təklif kimi saxla</button>}
-            <button onClick={() => removeWhatIf(wi.key)} className="rounded border border-[var(--line)] px-3 py-2 text-sm text-[var(--muted)] hover:text-[var(--text)]">Sil</button>
+            {!offline && <button onClick={() => saveWhatIf(wi)} className="ayan-btn-primary flex-1 px-3 py-2.5 text-sm">Təklif kimi saxla</button>}
+            <button onClick={() => removeWhatIf(wi.key)} className="rounded-[9px] border border-[var(--line)] px-3 py-2 text-sm font-semibold text-[var(--muted)] hover:border-[var(--deny)] hover:text-[var(--deny)]">Sil</button>
           </div>
         </div>
       )}
 
       {st && (
         <div>
-          <h2 className="font-display text-lg font-semibold leading-tight">{st.name}</h2>
-          <p className="mt-2 font-display text-5xl font-bold tabular-nums">{String(st.score).replace(".", ",")}<span className="text-xl text-[var(--muted)]"> / 5</span></p>
-          <p className="text-sm text-[var(--muted)]">Gəliş balı: şəhərə çatan sərnişin son kilometri nə ilə qət edə bilər</p>
+          <h2 className="text-[18px] font-bold leading-tight tracking-tight">{st.name}</h2>
+          <div className="mt-3">
+            <Screen value={String(st.score).replace(".", ",")} unit="/ 5"
+              tag={<><span className={`ayan-led ${st.score >= 2.5 ? "text-[#8E9AA8]" : "text-[var(--deny)]"}`} /> Avtovağzal · gəliş balı</>}
+              caption="Şəhərə çatan sərnişin son kilometri nə ilə qət edə bilər" />
+          </div>
           <dl className="mt-3">
             <Row k="Metroya piyada" v={meters(st.metro_walk_m)} s="measured" />
             <Row k="Avtobus marşrutları (400 m)" v={String(st.bus_routes_400)} s="measured" />

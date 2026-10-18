@@ -12,7 +12,7 @@
 | Offline PMTiles | ⬜ P1 |
 | Pitch | ⬜ Sona saxlanılıb |
 
-**Plandan fərqlər (mənim qərarlarım):**
+**Plandan fərqlər (qəbul olunmuş qərarlar):**
 - Bakı sərhədi OSM əvəzinə geoBoundaries-dən götürüldü, çünki OSM sərhədi natamamdır (164 km²).
 - Zaman testi (iyul → sentyabr) doğrulama kimi işləmədi: AYNA sentyabrda boşluqları bağlamır, şəbəkəni sıxlaşdırır (97% < 400 m). Əvəzində tələbat indeksi AYNA-nın seçdiyi yerlərlə AUC üzrə doğrulandı (0.946). Sıxlaşdırma faktı isə əsas tapıntı kimi istifadə olunur.
 - 176 özəl marşrutun proqnozu AYNA-nın rəsmi gündəlik cəminə kalibrləndi (1.38 mln/gün, əmsal 0.602).

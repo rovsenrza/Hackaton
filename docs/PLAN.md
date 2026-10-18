@@ -2,7 +2,7 @@
 
 > TransportTech hakatonu · İRİA × AYNA · 17–18 oktyabr 2026
 > İstiqamət: **"AYNA Mobility Hub & Last-Mile"**, yəni multimodal nəqliyyat habları və vahid rəqəmsal əkiz
-> Komanda: 1 nəfər (hamısını özüm edirəm), buna görə plan prioritetlərə (P0 / P1 / P2) bölünüb
+> Komanda: Rövşən Rzayev (data, model, engine, tətbiq), Talib İsgəndərli (biznes, tədqiqat), İlham Süleymanov (pitch, təqdimat). Vaxt qısa olduğu üçün plan prioritetlərə (P0 / P1 / P2) bölünüb
 
 **Qəbul olunmuş qərarlar:**
 - Məhsul adı: **AYAN**.
@@ -362,7 +362,7 @@ Brauzer ──► web/ (Next.js) ──┬──► statik qatlar (ani açılır
 **Seçilməyənlər və səbəbi:**
 - PostGIS (indi): demoda fərq yaratmır, deploy riski və ~1 saat əlavə iş deməkdir.
 - Yalnız statik variant: canlı izoxron və yenidən optimallaşdırma itir, dəqiqlik üstünlüyümüz görünmür.
-- iOS app: alıcı masaüstündə işləyir, solo vaxtı bölünür. Əvəzinə responsive Next.js qururuq, roadmap-də "PWA sahə audit modulu" qeyd olunur.
+- iOS app: alıcı masaüstündə işləyir, mobil tətbiq vaxtı bölür. Əvəzinə responsive Next.js qururuq, roadmap-də "PWA sahə audit modulu" qeyd olunur.
 
 ### 6.3 Detallı texniki qərarlar (təsdiqlənib ✅)
 
@@ -434,7 +434,7 @@ hackaton/
 
 ---
 
-## 7. İş planı (solo, prioritetli)
+## 7. İş planı (prioritetli)
 
 **P0** mütləqdir, demo onsuz olmur. **P1** fərqləndiricidir. **P2** vaxt qalsa edilir.
 
@@ -472,7 +472,7 @@ hackaton/
 - İnnovativlik: MCLP və what-if əkiz.
 - Prototip: canlı və deploy olunmuş tətbiq.
 - Təqdimat: məşq olunmuş ssenari.
-- Komanda: solo, uçdan-uca icra.
+- Komanda: 3 nəfər, rollar bölünüb, uçdan-uca icra.
 
 **Gözlənilən suallar:**
 - "CO₂ rəqəmi necə hesablanıb?" → Metodologiya paneli.

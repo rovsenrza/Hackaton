@@ -100,17 +100,17 @@ export default function Copilot() {
   };
 
   return (
-    <aside className="absolute right-4 top-20 z-20 flex max-h-[calc(100%-15rem)] w-[24rem] flex-col rounded-md bg-[var(--surface)]/97 shadow-xl ring-1 ring-[var(--line)]" aria-label="AYAN Kopilot">
+    <aside className="absolute right-4 top-[5.25rem] z-20 flex max-h-[calc(100%-16rem)] w-[24rem] flex-col ayan-card" aria-label="AYAN Kopilot">
       <header className="flex items-center justify-between border-b border-[var(--line)] px-4 py-2.5">
         <div>
           <p className="font-display text-base font-semibold">AYAN Kopilot</p>
           <p className="text-[11px] text-[var(--muted)]">Rəqəmlər AYAN modelindən gəlir, AI yalnız soruşur və izah edir</p>
         </div>
-        <button onClick={() => s.set({ copilotOpen: false })} className="text-sm text-[var(--muted)] hover:text-[var(--text)]" aria-label="Bağla">✕</button>
+        <button onClick={() => s.set({ copilotOpen: false })} className="grid h-7 w-7 place-items-center rounded-[8px] text-[var(--muted)] hover:bg-[var(--surface2)] hover:text-[var(--text)]" aria-label="Bağla"><svg aria-hidden viewBox="0 0 16 16" className="h-3.5 w-3.5"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button>
       </header>
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
         {enabled === false && (
-          <p className="rounded border border-[var(--hub)]/60 px-3 py-2 text-xs text-[var(--hub)]">
+          <p className="rounded-[9px] bg-[#FDF1DE] px-3 py-2 text-xs font-semibold text-[#A8650A]">
             Kopilot aktiv deyil: engine/.env faylına ANTHROPIC_API_KEY əlavə edib engine-i yenidən başladın.
           </p>
         )}
@@ -125,7 +125,7 @@ export default function Copilot() {
         )}
         {msgs.map((m, i) =>
           m.role === "user" ? (
-            <p key={i} className="ml-8 rounded-md bg-[var(--surface2)] px-3 py-2 text-sm">{m.text}</p>
+            <p key={i} className="ml-8 rounded-[12px] rounded-br-[4px] bg-[var(--cobalt)] px-3 py-2 text-sm text-white">{m.text}</p>
           ) : (
             <div key={i} className="mr-4">
               <MiniMd text={m.text} />
@@ -141,7 +141,7 @@ export default function Copilot() {
       <form onSubmit={(e) => { e.preventDefault(); send(input); }} className="flex gap-2 border-t border-[var(--line)] p-3">
         <input value={input} onChange={(e) => setInput(e.target.value)} disabled={!enabled || busy} placeholder="Sualınızı yazın…"
           className="flex-1 rounded border border-[var(--line)] bg-[var(--surface2)] px-3 py-2 text-sm disabled:opacity-50" />
-        <button type="submit" disabled={!enabled || busy || !input.trim()} className="rounded bg-[var(--hub)] px-3 py-2 text-sm font-semibold text-[var(--bg)] disabled:opacity-50">Göndər</button>
+        <button type="submit" disabled={!enabled || busy || !input.trim()} className="ayan-btn-primary px-3 py-2 text-sm disabled:opacity-50">Göndər</button>
       </form>
     </aside>
   );
