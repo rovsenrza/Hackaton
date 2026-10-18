@@ -15,9 +15,16 @@ GEOD = Geod(ellps="WGS84")
 TO_UTM = Transformer.from_crs(4326, UTM, always_xy=True)
 
 
+def built(p: Path) -> Path:
+    """Pipeline çıxışı (build/, engine/data/ git-də deyil): yoxdursa test səbəbi ilə keçilir."""
+    if not p.exists():
+        pytest.skip(f"{p.name} yoxdur: əvvəlcə pipeline-ı işə salın (README → Pipeline)")
+    return p
+
+
 @pytest.fixture(scope="module")
 def net():
-    return WalkNet(ENGINE_DATA / "walk_graph.pkl")
+    return WalkNet(built(ENGINE_DATA / "walk_graph.pkl"))
 
 
 def test_utm_distance_matches_geodesic():
@@ -59,7 +66,7 @@ def test_covered_points_respect_walk_distance(net):
 
 
 def test_hubs_spacing_and_qa():
-    rep = json.loads((BUILD / "hubs_report.json").read_text())
+    rep = json.loads(built(BUILD / "hubs_report.json").read_text())
     qa = rep["placement_qa"]
     assert qa["new_hubs_free_check"] is True
     assert qa["min_spacing_m"] >= 300
@@ -70,7 +77,8 @@ def test_new_hubs_off_carriageway():
     import geopandas as gpd
     from shapely.geometry import Point
     from common import OSM_PBF
-    hubs = [h for h in json.loads((BUILD / "hubs.json").read_text())["hubs"] if h["action"] == "new"]
+    built(OSM_PBF)
+    hubs = [h for h in json.loads(built(BUILD / "hubs.json").read_text())["hubs"] if h["action"] == "new"]
     lon = [h["lon"] for h in hubs]
     lat = [h["lat"] for h in hubs]
     bb = (min(lon) - 0.01, min(lat) - 0.01, max(lon) + 0.01, max(lat) + 0.01)
@@ -83,7 +91,7 @@ def test_new_hubs_off_carriageway():
 
 
 def test_bus_ridership_calibrated_to_official_total():
-    rep = json.loads((BUILD / "demand_report.json").read_text())
+    rep = json.loads(built(BUILD / "demand_report.json").read_text())
     m = rep["route_model"]
     total = m["predicted_daily_total"] + m["measured_daily_total"]
     assert abs(total - 335.6e6 / 243) / (335.6e6 / 243) < 0.01

@@ -12,6 +12,20 @@ const KM = 4.918839e6 / 2.297405e6;
 const EF_CAR = 0.173;
 const EF_NEW = 0.7 * 0.06;
 
+// Eyni büdcə müqayisəsi (09_value_tests): təsadüfi seçim üçün orta dəyər götürülür
+type Alt = Record<string, number | { mean: number }>;
+const ALTS: [string, string][] = [
+  ["model_mclp", "AYAN (MCLP)"],
+  ["yüksək_tələbat_boşluqsuz", "Ən yüksək tələbat (boşluğa baxmadan)"],
+  ["mərkəzə_ən_yaxın", "Mərkəzə ən yaxın"],
+  ["təsadüfi", "Təsadüfi seçim (orta)"],
+];
+const val = (a: Alt | undefined, k: string) => {
+  const v = a?.[k];
+  return typeof v === "number" ? v : (v?.mean ?? 0);
+};
+const times = (a: number, b: number) => (b > 0 ? `×${(a / b).toFixed(a / b >= 10 ? 0 : 1).replace(".", ",")}` : "—");
+
 function Kpi({ v, label, src }: { v: string; label: string; src: string }) {
   return (
     <div className="border-l-2 border-[var(--line)] pl-3">
@@ -27,7 +41,11 @@ export default function Dashboard({ data }: { data: StaticData }) {
   const m = data.metrics.hubs;
   const hubs = optimized ?? data.hubs.hubs;
   const [shift, setShift] = useState(0.2);
+  const [budget, setBudget] = useState("10");
   const n = Math.min(nHubs, hubs.length);
+  const eq: Record<string, Record<string, Alt>> = data.metrics.value?.equal_budget ?? {};
+  const eqRow = eq[budget];
+  const modelTrips = val(eqRow?.model_mclp, "trips_day_new");
 
   const curve = useMemo(() => {
     let closed = 0;
@@ -125,6 +143,47 @@ export default function Dashboard({ data }: { data: StaticData }) {
             </p>
           </div>
         </section>
+
+        {eqRow && (
+          <section className="mt-10">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Eyni büdcə, fərqli seçim</h2>
+                <p className="text-sm text-[var(--muted)]">Eyni sayda hub qurulsa, yeri necə seçmək nəticəni dəyişir. Fayda yalnız artım kimi sayılır</p>
+              </div>
+              <div className="flex gap-1">
+                {Object.keys(eq).map((k) => (
+                  <button key={k} onClick={() => setBudget(k)}
+                    className={`rounded border px-3 py-1 text-sm tabular-nums ${k === budget ? "border-[var(--hub)] text-[var(--hub)]" : "border-[var(--line)] hover:bg-[var(--surface2)]"}`}>
+                    {k} hub
+                  </button>
+                ))}
+              </div>
+            </div>
+            <table className="mt-3 w-full text-sm">
+              <thead className="text-left text-xs text-[var(--muted)]">
+                <tr><th className="py-1.5 font-normal">Seçim qaydası</th><th className="font-normal">Əlavə səfər/gün</th><th className="font-normal">AYAN üstünlüyü</th><th className="font-normal">İlk dəfə xidmət alan sakin</th><th className="font-normal">CO₂, t/il</th></tr>
+              </thead>
+              <tbody>
+                {ALTS.filter(([k]) => eqRow[k]).map(([k, label]) => {
+                  const t = val(eqRow[k], "trips_day_new");
+                  return (
+                    <tr key={k} className={`border-t border-[var(--line)] ${k === "model_mclp" ? "text-[var(--hub)]" : ""}`}>
+                      <td className="py-2 pr-2">{label}</td>
+                      <td className="font-display text-lg font-bold tabular-nums">{approx(t)}</td>
+                      <td className="tabular-nums">{k === "model_mclp" ? "—" : times(modelTrips, t)}</td>
+                      <td className="tabular-nums">{approx(val(eqRow[k], "pop_newly_served"))}</td>
+                      <td className="tabular-nums">{tons(val(eqRow[k], "co2_t_year_base"))}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="mt-2 text-xs text-[var(--muted)]">
+              Mənbə: 09_value_tests, eyni piyada şəbəkəsi və eyni K×D səfər modeli. Təsadüfi seçim nəqliyyat düyünləri arasından 200 dəfə təkrarlanıb. Dəyər “harada qurmamalı”nı göstərib büdcəni xidmətsiz tələbata yönəltməkdədir.
+            </p>
+          </section>
+        )}
 
         <section className="mt-10 grid gap-8 lg:grid-cols-2">
           <div>
