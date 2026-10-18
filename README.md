@@ -12,6 +12,11 @@ AYAN hub-ların harada olduğunu göstərməklə kifayətlənmir, onları **hara
 
 Metodologiya, data mənbələri və qərarlar: [`docs/PLAN.md`](docs/PLAN.md). Pitch ssenarisi və sual-cavab: [`pitch/PITCH.md`](pitch/PITCH.md).
 
+**Təqdimat hazırlayanlar üçün:**
+- Biznes modeli, xərclər və maliyyə: [`pitch/business/business_model.md`](pitch/business/business_model.md). Maşın üçün data: [`financials.json`](pitch/business/financials.json) və `*.csv`. Manat rəqəmləri ssenaridir (fərziyyələr faylın içində işarələnib).
+- Məhsulun ekran görüntüləri (yeni dizayn): [`pitch/screenshots/`](pitch/screenshots/). Brend işarəsi: `web/public/brand/ayan-mark.png`.
+- Dizayn sistemi: [`DESIGN.md`](DESIGN.md), məhsul faktları: [`PRODUCT.md`](PRODUCT.md).
+
 ## Struktur
 
 ```

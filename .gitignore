@@ -16,3 +16,6 @@ datas/apar_token.txt
 # HyperFrames: snapshots and renders are regenerated
 videos/*/.hyperframes/
 videos/*/renders/
+
+# Office kilid faylları
+~$*

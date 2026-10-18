@@ -1,0 +1,19 @@
+scenario,item,azn,payer
+low,Komanda (3 ay),36000,AYNA (pilot müqaviləsi)
+low,On-prem quraşdırma və data inteqrasiyası,25000,AYNA (pilot müqaviləsi)
+low,Top-10 hub sahə auditi,1500,AYNA (pilot müqaviləsi)
+low,İnfrastruktur (3 ay),900,AYNA (pilot müqaviləsi)
+low,Ehtiyat (10%),6340,AYNA (pilot müqaviləsi)
+low,10 hub-ın fiziki qurulması (kapital),170350,AYNA/şəhər kapital büdcəsi
+base,Komanda (3 ay),48000,AYNA (pilot müqaviləsi)
+base,On-prem quraşdırma və data inteqrasiyası,45000,AYNA (pilot müqaviləsi)
+base,Top-10 hub sahə auditi,3000,AYNA (pilot müqaviləsi)
+base,İnfrastruktur (3 ay),1800,AYNA (pilot müqaviləsi)
+base,Ehtiyat (10%),9780,AYNA (pilot müqaviləsi)
+base,10 hub-ın fiziki qurulması (kapital),322750,AYNA/şəhər kapital büdcəsi
+high,Komanda (3 ay),66000,AYNA (pilot müqaviləsi)
+high,On-prem quraşdırma və data inteqrasiyası,70000,AYNA (pilot müqaviləsi)
+high,Top-10 hub sahə auditi,5000,AYNA (pilot müqaviləsi)
+high,İnfrastruktur (3 ay),3600,AYNA (pilot müqaviləsi)
+high,Ehtiyat (10%),14460,AYNA (pilot müqaviləsi)
+high,10 hub-ın fiziki qurulması (kapital),566000,AYNA/şəhər kapital büdcəsi

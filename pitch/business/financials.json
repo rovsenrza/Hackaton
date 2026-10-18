@@ -1,0 +1,488 @@
+{
+  "_readme": "AYAN xərc və maliyyə modeli. 'model_facts' və 'impact_measured_by_model' modelin real çıxışıdır. Bütün AZN rəqəmləri FƏRZİYYƏYƏ əsaslanan ssenarilərdir (low/base/high) və AYNA ilə təsdiqlənməlidir. Təqdimatda 'təxmini' və ya 'ssenari' kimi göstərin. Valyuta: AZN (1 USD = 1,70 AZN).",
+  "currency": "AZN",
+  "usd_azn": 1.7,
+  "status_legend": {
+    "fakt": "modelin çıxışı və ya açıq data",
+    "fərziyyə": "komanda təxmini, təsdiqlənməli",
+    "ssenari": "fərziyyələrdən hesablanmış"
+  },
+  "model_facts": {
+    "residents_without_parking_5min": 2065000.0,
+    "residents_without_parking_share": 0.715,
+    "candidate_transit_nodes": 2986,
+    "hub_walk_radius_m": 400,
+    "calibration_trips_per_point_day": 12.21
+  },
+  "assumptions": {
+    "dock_capex_azn": {
+      "desc": "Bir velo/scooter yeri: dayaq/rəf, işarələmə, quraşdırma (dok-stansiyasız, AYNA MPS tipli)",
+      "low": 250,
+      "base": 450,
+      "high": 800,
+      "status": "fərziyyə"
+    },
+    "hub_fixed_capex_azn": {
+      "desc": "Hub-ın sabit hissəsi tipə görə: istiqamət lövhəsi/totem, səki işləri, boya, işıqlandırma",
+      "S": {
+        "low": 3000,
+        "base": 6000,
+        "high": 10000
+      },
+      "M": {
+        "low": 8000,
+        "base": 15000,
+        "high": 25000
+      },
+      "L": {
+        "low": 20000,
+        "base": 40000,
+        "high": 70000
+      },
+      "status": "fərziyyə"
+    },
+    "action_fixed_factor": {
+      "desc": "Sabit xərc əmsalı əməliyyata görə: çevrilmədə parkinq artıq var, inteqrasiyada mərkəz mövcuddur",
+      "new": 1.0,
+      "upgrade": 0.4,
+      "integrate": 0.5,
+      "status": "fərziyyə"
+    },
+    "opex_share_of_capex_per_year": {
+      "desc": "İllik saxlama/təmir/təmizlik, kapital xərcinin payı kimi",
+      "low": 0.06,
+      "base": 0.08,
+      "high": 0.12,
+      "status": "fərziyyə"
+    },
+    "platform_license_azn_per_year": {
+      "desc": "AYAN platformasının bir şəhər üçün illik lisenziyası + dəstək (B2G, on-prem)",
+      "low": 60000,
+      "base": 120000,
+      "high": 200000,
+      "status": "fərziyyə"
+    },
+    "onprem_setup_azn": {
+      "desc": "Birdəfəlik quraşdırma: AYNA serverində yerləşdirmə, PostGIS, rəsmi data feed-lərinə inteqrasiya",
+      "low": 25000,
+      "base": 45000,
+      "high": 70000,
+      "status": "fərziyyə"
+    },
+    "new_city_onboarding_azn": {
+      "desc": "Yeni şəhərə uyğunlaşdırma (data hazırlığı, kalibrləmə) birdəfəlik",
+      "low": 20000,
+      "base": 35000,
+      "high": 55000,
+      "status": "fərziyyə"
+    },
+    "team_monthly_cost_azn": {
+      "desc": "Komandanın aylıq xərci (4 nəfər: data/model, backend, frontend/GIS, biznes), vergilər daxil",
+      "low": 12000,
+      "base": 16000,
+      "high": 22000,
+      "status": "fərziyyə"
+    },
+    "infra_monthly_azn": {
+      "desc": "Server, monitorinq, xəritə məlumatı yeniləmələri (on-prem olduqda AYNA tərəfdə qismən)",
+      "low": 300,
+      "base": 600,
+      "high": 1200,
+      "status": "fərziyyə"
+    },
+    "field_audit_per_hub_azn": {
+      "desc": "Pilotda hər hub üçün sahə auditi (səki eni, maneələr, foto)",
+      "low": 150,
+      "base": 300,
+      "high": 500,
+      "status": "fərziyyə"
+    },
+    "operator_analytics_azn_per_year": {
+      "desc": "Mikromobillik operatoruna (Apar və s.) yerləşmə analitikası abunəsi, bir operator",
+      "low": 12000,
+      "base": 24000,
+      "high": 40000,
+      "status": "fərziyyə"
+    }
+  },
+  "hub_program": {
+    "10": {
+      "composition": {
+        "types": {
+          "S": 0,
+          "M": 4,
+          "L": 6
+        },
+        "actions": {
+          "new": 3,
+          "upgrade": 6,
+          "integrate": 1
+        },
+        "docks": 315
+      },
+      "impact_measured_by_model": {
+        "pop_newly_served": 4000.0,
+        "trips_day_new": 222,
+        "co2_t_year_base": 4.6,
+        "share_of_unserved_demand_closed": 0.082,
+        "random_placement_trips_day_new_mean": 29.8,
+        "ayan_vs_random_x": 7.5
+      },
+      "costs_by_scenario": {
+        "low": {
+          "capex_azn": 170350,
+          "opex_azn_per_year": 10221,
+          "capex_per_dock_azn": 541,
+          "capex_per_new_resident_azn": 43,
+          "capex_per_daily_new_trip_azn": 767,
+          "cost_per_new_trip_azn_5y": 0.55,
+          "random_placement_cost_per_daily_new_trip_azn": 5716
+        },
+        "base": {
+          "capex_azn": 322750,
+          "opex_azn_per_year": 25820,
+          "capex_per_dock_azn": 1025,
+          "capex_per_new_resident_azn": 81,
+          "capex_per_daily_new_trip_azn": 1454,
+          "cost_per_new_trip_azn_5y": 1.12,
+          "random_placement_cost_per_daily_new_trip_azn": 10831
+        },
+        "high": {
+          "capex_azn": 566000,
+          "opex_azn_per_year": 67920,
+          "capex_per_dock_azn": 1797,
+          "capex_per_new_resident_azn": 142,
+          "capex_per_daily_new_trip_azn": 2550,
+          "cost_per_new_trip_azn_5y": 2.24,
+          "random_placement_cost_per_daily_new_trip_azn": 18993
+        }
+      }
+    },
+    "20": {
+      "composition": {
+        "types": {
+          "S": 0,
+          "M": 14,
+          "L": 6
+        },
+        "actions": {
+          "new": 12,
+          "upgrade": 7,
+          "integrate": 1
+        },
+        "docks": 499
+      },
+      "impact_measured_by_model": {
+        "pop_newly_served": 12300.0,
+        "trips_day_new": 328,
+        "co2_t_year_base": 6.7,
+        "share_of_unserved_demand_closed": 0.121,
+        "random_placement_trips_day_new_mean": 63.4,
+        "ayan_vs_random_x": 5.2
+      },
+      "costs_by_scenario": {
+        "low": {
+          "capex_azn": 291550,
+          "opex_azn_per_year": 17493,
+          "capex_per_dock_azn": 584,
+          "capex_per_new_resident_azn": 24,
+          "capex_per_daily_new_trip_azn": 889,
+          "cost_per_new_trip_azn_5y": 0.63,
+          "random_placement_cost_per_daily_new_trip_azn": 4599
+        },
+        "base": {
+          "capex_azn": 546550,
+          "opex_azn_per_year": 43724,
+          "capex_per_dock_azn": 1095,
+          "capex_per_new_resident_azn": 44,
+          "capex_per_daily_new_trip_azn": 1666,
+          "cost_per_new_trip_azn_5y": 1.28,
+          "random_placement_cost_per_daily_new_trip_azn": 8621
+        },
+        "high": {
+          "capex_azn": 948200,
+          "opex_azn_per_year": 113784,
+          "capex_per_dock_azn": 1900,
+          "capex_per_new_resident_azn": 77,
+          "capex_per_daily_new_trip_azn": 2891,
+          "cost_per_new_trip_azn_5y": 2.53,
+          "random_placement_cost_per_daily_new_trip_azn": 14956
+        }
+      }
+    },
+    "50": {
+      "composition": {
+        "types": {
+          "S": 10,
+          "M": 33,
+          "L": 7
+        },
+        "actions": {
+          "new": 31,
+          "upgrade": 17,
+          "integrate": 2
+        },
+        "docks": 952
+      },
+      "impact_measured_by_model": {
+        "pop_newly_served": 33300.0,
+        "trips_day_new": 513,
+        "co2_t_year_base": 10.6,
+        "share_of_unserved_demand_closed": 0.19,
+        "random_placement_trips_day_new_mean": 150.8,
+        "ayan_vs_random_x": 3.4
+      },
+      "costs_by_scenario": {
+        "low": {
+          "capex_azn": 557800,
+          "opex_azn_per_year": 33468,
+          "capex_per_dock_azn": 586,
+          "capex_per_new_resident_azn": 17,
+          "capex_per_daily_new_trip_azn": 1087,
+          "cost_per_new_trip_azn_5y": 0.77,
+          "random_placement_cost_per_daily_new_trip_azn": 3699
+        },
+        "base": {
+          "capex_azn": 1041600,
+          "opex_azn_per_year": 83328,
+          "capex_per_dock_azn": 1094,
+          "capex_per_new_resident_azn": 31,
+          "capex_per_daily_new_trip_azn": 2030,
+          "cost_per_new_trip_azn_5y": 1.56,
+          "random_placement_cost_per_daily_new_trip_azn": 6907
+        },
+        "high": {
+          "capex_azn": 1797600,
+          "opex_azn_per_year": 215712,
+          "capex_per_dock_azn": 1888,
+          "capex_per_new_resident_azn": 54,
+          "capex_per_daily_new_trip_azn": 3504,
+          "cost_per_new_trip_azn_5y": 3.07,
+          "random_placement_cost_per_daily_new_trip_azn": 11920
+        }
+      }
+    }
+  },
+  "pilot_3_months_10_hubs": {
+    "low": {
+      "software_and_team": {
+        "team": {
+          "label": "Komanda (3 ay)",
+          "azn": 36000
+        },
+        "setup": {
+          "label": "On-prem quraşdırma və data inteqrasiyası",
+          "azn": 25000
+        },
+        "audit": {
+          "label": "Top-10 hub sahə auditi",
+          "azn": 1500
+        },
+        "infra": {
+          "label": "İnfrastruktur (3 ay)",
+          "azn": 900
+        },
+        "contingency": {
+          "label": "Ehtiyat (10%)",
+          "azn": 6340
+        }
+      },
+      "software_total_azn": 69740,
+      "physical_hubs_capex_azn": 170350,
+      "physical_hubs_note": "10 hub-ın fiziki qurulması adətən şəhərin/AYNA-nın kapital büdcəsindəndir, AYAN-ın gəlirinə daxil deyil",
+      "pilot_total_incl_hubs_azn": 240090
+    },
+    "base": {
+      "software_and_team": {
+        "team": {
+          "label": "Komanda (3 ay)",
+          "azn": 48000
+        },
+        "setup": {
+          "label": "On-prem quraşdırma və data inteqrasiyası",
+          "azn": 45000
+        },
+        "audit": {
+          "label": "Top-10 hub sahə auditi",
+          "azn": 3000
+        },
+        "infra": {
+          "label": "İnfrastruktur (3 ay)",
+          "azn": 1800
+        },
+        "contingency": {
+          "label": "Ehtiyat (10%)",
+          "azn": 9780
+        }
+      },
+      "software_total_azn": 107580,
+      "physical_hubs_capex_azn": 322750,
+      "physical_hubs_note": "10 hub-ın fiziki qurulması adətən şəhərin/AYNA-nın kapital büdcəsindəndir, AYAN-ın gəlirinə daxil deyil",
+      "pilot_total_incl_hubs_azn": 430330
+    },
+    "high": {
+      "software_and_team": {
+        "team": {
+          "label": "Komanda (3 ay)",
+          "azn": 66000
+        },
+        "setup": {
+          "label": "On-prem quraşdırma və data inteqrasiyası",
+          "azn": 70000
+        },
+        "audit": {
+          "label": "Top-10 hub sahə auditi",
+          "azn": 5000
+        },
+        "infra": {
+          "label": "İnfrastruktur (3 ay)",
+          "azn": 3600
+        },
+        "contingency": {
+          "label": "Ehtiyat (10%)",
+          "azn": 14460
+        }
+      },
+      "software_total_azn": 159060,
+      "physical_hubs_capex_azn": 566000,
+      "physical_hubs_note": "10 hub-ın fiziki qurulması adətən şəhərin/AYNA-nın kapital büdcəsindəndir, AYAN-ın gəlirinə daxil deyil",
+      "pilot_total_incl_hubs_azn": 725060
+    }
+  },
+  "revenue_projection_3_years": {
+    "low": {
+      "year_1": {
+        "year": 1,
+        "scenario": "low",
+        "cities": 1,
+        "operators": 0,
+        "license_revenue_azn": 45000,
+        "onboarding_revenue_azn": 25000,
+        "operator_analytics_revenue_azn": 0,
+        "total_revenue_azn": 70000,
+        "operating_cost_azn": 147600,
+        "operating_result_azn": -77600
+      },
+      "year_2": {
+        "year": 2,
+        "scenario": "low",
+        "cities": 2,
+        "operators": 1,
+        "license_revenue_azn": 120000,
+        "onboarding_revenue_azn": 20000,
+        "operator_analytics_revenue_azn": 12000,
+        "total_revenue_azn": 152000,
+        "operating_cost_azn": 187200,
+        "operating_result_azn": -35200
+      },
+      "year_3": {
+        "year": 3,
+        "scenario": "low",
+        "cities": 3,
+        "operators": 2,
+        "license_revenue_azn": 180000,
+        "onboarding_revenue_azn": 20000,
+        "operator_analytics_revenue_azn": 24000,
+        "total_revenue_azn": 224000,
+        "operating_cost_azn": 226800,
+        "operating_result_azn": -2800
+      }
+    },
+    "base": {
+      "year_1": {
+        "year": 1,
+        "scenario": "base",
+        "cities": 1,
+        "operators": 0,
+        "license_revenue_azn": 90000,
+        "onboarding_revenue_azn": 45000,
+        "operator_analytics_revenue_azn": 0,
+        "total_revenue_azn": 135000,
+        "operating_cost_azn": 199200,
+        "operating_result_azn": -64200
+      },
+      "year_2": {
+        "year": 2,
+        "scenario": "base",
+        "cities": 2,
+        "operators": 1,
+        "license_revenue_azn": 240000,
+        "onboarding_revenue_azn": 35000,
+        "operator_analytics_revenue_azn": 24000,
+        "total_revenue_azn": 299000,
+        "operating_cost_azn": 254400,
+        "operating_result_azn": 44600
+      },
+      "year_3": {
+        "year": 3,
+        "scenario": "base",
+        "cities": 3,
+        "operators": 2,
+        "license_revenue_azn": 360000,
+        "onboarding_revenue_azn": 35000,
+        "operator_analytics_revenue_azn": 48000,
+        "total_revenue_azn": 443000,
+        "operating_cost_azn": 309600,
+        "operating_result_azn": 133400
+      }
+    },
+    "high": {
+      "year_1": {
+        "year": 1,
+        "scenario": "high",
+        "cities": 1,
+        "operators": 0,
+        "license_revenue_azn": 150000,
+        "onboarding_revenue_azn": 70000,
+        "operator_analytics_revenue_azn": 0,
+        "total_revenue_azn": 220000,
+        "operating_cost_azn": 278400,
+        "operating_result_azn": -58400
+      },
+      "year_2": {
+        "year": 2,
+        "scenario": "high",
+        "cities": 2,
+        "operators": 1,
+        "license_revenue_azn": 400000,
+        "onboarding_revenue_azn": 55000,
+        "operator_analytics_revenue_azn": 40000,
+        "total_revenue_azn": 495000,
+        "operating_cost_azn": 358800,
+        "operating_result_azn": 136200
+      },
+      "year_3": {
+        "year": 3,
+        "scenario": "high",
+        "cities": 3,
+        "operators": 2,
+        "license_revenue_azn": 600000,
+        "onboarding_revenue_azn": 55000,
+        "operator_analytics_revenue_azn": 80000,
+        "total_revenue_azn": 735000,
+        "operating_cost_azn": 439200,
+        "operating_result_azn": 295800
+      }
+    }
+  },
+  "value_same_budget": {
+    "statement": "Eyni sayda hub (≈ eyni büdcə) ilə AYAN-ın seçimi daha çox yeni səfər verir; nisbət vahid qiymətdən asılı deyil",
+    "budget_10_hubs_trips_day_new": {
+      "AYAN (MCLP)": 223,
+      "Ən yüksək tələbat (boşluğa baxmadan)": 150,
+      "Təsadüfi seçim (orta, 200 təkrar)": 29.8,
+      "Mərkəzə ən yaxın": 11
+    },
+    "ayan_vs_random_x": 7.5,
+    "ayan_vs_center_x": 20,
+    "ayan_vs_high_demand_x": 1.5,
+    "upper_bound_if_gap_fully_closed": {
+      "trips_day": 45900.0,
+      "co2_t_year": {
+        "low": 309,
+        "base": 939,
+        "high": 1634
+      }
+    }
+  }
+}
