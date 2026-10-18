@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { ENGINE } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { int } from "@/lib/format";
+import type { StaticData } from "@/lib/data";
+import DataRequests from "./DataRequests";
 
 interface Issue {
   row: number;
@@ -33,7 +35,7 @@ function Pill({ a }: { a: "avto" | "yoxlama" }) {
   );
 }
 
-export default function Quality() {
+export default function Quality({ data }: { data: StaticData }) {
   const online = useStore((s) => s.engineOnline);
   const [samples, setSamples] = useState<{ file: string; label: string }[]>([]);
   const [rep, setRep] = useState<Report | null>(null);
@@ -81,7 +83,8 @@ export default function Quality() {
   return (
     <div className="absolute inset-0 z-20 overflow-y-auto bg-[var(--bg)]/92 px-6 pb-12 pt-20 backdrop-blur-sm">
       <div className="mx-auto max-w-5xl">
-        <h1 className="font-display text-3xl font-bold tracking-tight">Data keyfiyyət mərkəzi</h1>
+        <DataRequests data={data} />
+        <h1 className="mt-12 font-display text-3xl font-bold tracking-tight">Data keyfiyyət mərkəzi</h1>
         <p className="mt-1 max-w-2xl text-[var(--muted)]">
           Nəqliyyat faylını atın: koordinat formatı, yerdəyişmiş enlik və uzunluq, dublikatlar, Bakıdan kənar nöqtələr, Excel təhrifləri, kiril simvollar və köhnə marşrutlar avtomatik yoxlanılır.
         </p>

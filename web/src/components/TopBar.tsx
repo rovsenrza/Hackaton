@@ -8,7 +8,7 @@ import type { Panel } from "@/lib/types";
 const PANELS: { id: Panel; label: string }[] = [
   { id: "map", label: "Xəritə və hub planı" },
   { id: "dashboard", label: "Rəhbərlik paneli" },
-  { id: "quality", label: "Data keyfiyyəti" },
+  { id: "quality", label: "Data" },
   { id: "method", label: "Metodologiya" },
 ];
 

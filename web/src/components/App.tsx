@@ -80,7 +80,7 @@ export default function App() {
       )}
       {panel === "dashboard" && <Dashboard data={data} />}
       {panel === "method" && <Methodology data={data} />}
-      {panel === "quality" && <Quality />}
+      {panel === "quality" && <Quality data={data} />}
       {toast && (
         <div role="status" className="pointer-events-none absolute left-1/2 top-20 z-40 max-w-xl -translate-x-1/2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--text)] shadow-lg">
           {toast}
