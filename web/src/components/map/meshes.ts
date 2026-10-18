@@ -69,31 +69,3 @@ export const BUS_MESH = build([
   { x: [-4.0, -3.1], y: [-W - 0.06, -W + 0.25], z: [0, 0.75], c: "#121619" },
   { x: [-4.0, -3.1], y: [W - 0.25, W + 0.06], z: [0, 0.75], c: "#121619" },
 ]);
-
-// --- Mobility hub pavilyonu (M tipi: 14 × 3,8 m; S/L getScale ilə) ---
-export const HUB_DIM = { S: { len: 8, wid: 3.2 }, M: { len: 14, wid: 3.8 }, L: { len: 20, wid: 4.6 } } as const;
-const HL = 7;   // yarım uzunluq (M)
-const HW = 1.9; // yarım en (M)
-const docks: Part[] = Array.from({ length: 9 }, (_, i) => {
-  const x = -HL + 1.2 + i * 1.3;
-  return { x: [x, x + 0.08], y: [-HW + 0.25, -HW + 0.95], z: [0.18, 1.05], c: "#3CB37A" };
-});
-const pillars: Part[] = [-1, 1].flatMap((sx) =>
-  [-1, 1].map((sy) => ({ x: [sx * (HL - 0.5) - 0.13, sx * (HL - 0.5) + 0.13] as [number, number],
-    y: [sy * (HW - 0.35) - 0.13, sy * (HW - 0.35) + 0.13] as [number, number], z: [0.18, 3.1] as [number, number], c: "#A7B4BC" })),
-);
-/** Neytral hissələr (öz rəngləri ilə): platforma, dirəklər, dok yerləri, skamya, nişan dirəyi */
-export const HUB_STRUCT = build([
-  { x: [-HL - 0.4, HL + 0.4], y: [-HW - 0.3, HW + 0.3], z: [0, 0.18], c: "#5C7482" },   // platforma
-  ...pillars,
-  ...docks,
-  { x: [-HL + 1.4, -HL + 3.6], y: [HW - 0.75, HW - 0.35], z: [0.18, 0.62], c: "#8C6A4A" }, // skamya
-  { x: [HL - 2.6, HL - 0.8], y: [HW - 0.42, HW - 0.3], z: [0.6, 2.4], c: "#1B2B36" },     // məlumat ekranı
-  { x: [HL + 1.0, HL + 1.5], y: [-0.25, 0.25], z: [0, 3.6], c: "#EDF1F3" },              // nişan dirəyi
-]);
-/** Hub növünün rəngində olan hissələr (getColor = növ rəngi): örtük və nişan dirəyinin başlığı */
-export const HUB_CANOPY = build([
-  { x: [-HL - 0.6, HL + 0.6], y: [-HW - 0.5, HW + 0.5], z: [3.1, 3.38], c: "#FFFFFF" },
-  { x: [HL + 0.9, HL + 1.6], y: [-0.4, 0.4], z: [3.6, 4.5], c: "#FFFFFF" },
-]);
-export const HUB_TOP_M = 4.5;

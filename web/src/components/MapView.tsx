@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MapGL, { useControl, type MapRef } from "react-map-gl/maplibre";
 import { MapboxOverlay, type MapboxOverlayProps } from "@deck.gl/mapbox";
-import { GeoJsonLayer, IconLayer, PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
+import { ColumnLayer, GeoJsonLayer, IconLayer, PathLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import { H3HexagonLayer, TripsLayer } from "@deck.gl/geo-layers";
 import { AmbientLight, DirectionalLight, LightingEffect, type PickingInfo } from "@deck.gl/core";
 import { SimpleMeshLayer } from "@deck.gl/mesh-layers";
@@ -19,11 +19,12 @@ import { approx } from "@/lib/format";
 import { BASEMAP_URL, BEFORE_LABELS, BEFORE_ROADS, BUILDINGS_3D, loadCaspianStyle } from "./map/basemap";
 import { icon } from "./map/symbols";
 import { PLAYBACK, buildFleet, updateFleet, type Bus } from "./map/buses";
-import { BUS_MESH, HUB_CANOPY, HUB_DIM, HUB_STRUCT, HUB_TOP_M } from "./map/meshes";
+import { BUS_MESH } from "./map/meshes";
 import { declutter, square, textW, worldPx, type Box, type Candidate } from "./map/declutter";
 
 export const BASEMAP = BASEMAP_URL;
 export const BAKU_VIEW = { longitude: 49.86, latitude: 40.405, zoom: 11.2, pitch: 0, bearing: 0 };
+const BEACON_H = { S: 420, M: 540, L: 700 } as const;
 let mapInstance: MapRef | null = null;
 export const getMap = () => mapInstance;
 
@@ -274,10 +275,9 @@ export default function MapView({ data }: { data: StaticData }) {
   const city = z < 12.5; // şəhər miqyası: ikinci dərəcəli hub-lar kiçik və rəqəmsiz
   const hubR = (h: Hub) => HUB_R[h.type] * zf * (city && h.rank > 20 ? 0.68 : 1) + (h.rank === selRank ? 2.5 : 0);
   // mayak sütunları: şəhər miqyasında hündür, küçə miqyasında alçaq və nazik (binaları örtməsin)
-  // 3D hub pavilyonları: küçə səviyyəsində real ölçü, uzaqda vizual böyüdülmə (görünsün deyə)
-  const hubK = z >= 17 ? 1 : z >= 16 ? 1.6 : z >= 15 ? 2.8 : z >= 14 ? 5 : z >= 13 ? 9 : z >= 12 ? 15 : 22;
-  const beaconK = hubK;
-  const beaconH = (h: Hub) => (HUB_TOP_M + 1.5) * hubK * (h.type === "L" ? 1.15 : 1);
+  // mayak sütunları: şəhər miqyasında hündür, küçə miqyasında alçaq və nazik (binaları örtməsin)
+  const beaconK = clamp(1 - (z - 13) * 0.32, 0.3, 1);
+  const beaconH = (h: Hub) => (BEACON_H[h.type] + (h.rank <= 10 ? 160 : 0)) * beaconK;
   const routeAlpha = (twin ? 0.45 : 1) * (z < 12 ? 0.62 : z < 14 ? 0.85 : 0.7);
   const sizeKey = `${z}|${selRank}|${twin}`;
 
@@ -362,7 +362,7 @@ export default function MapView({ data }: { data: StaticData }) {
           return twin ? TWIN_STOPS[classOf(Number(r[mi]))] : c;
         },
         extruded: twin,
-        getElevation: (r) => 15 + Math.sqrt(Math.max(0, r[3]) / dMax) * 140, // pavilyonlar görünsün deyə alçaq
+        getElevation: (r) => 25 + Math.sqrt(Math.max(0, r[3]) / dMax) * 320,
         // yaxınlaşdıqca relyef alçalır: binalar və avtobus axını görünür qalır
         elevationScale: twin ? clamp(1 - (z - 12) * 0.5, 0.22, 1) : 1,
         coverage: twin ? 0.78 : 1,
@@ -641,7 +641,6 @@ export default function MapView({ data }: { data: StaticData }) {
     // 5) təklif olunan hub-lar: ən üst ierarxiya
     L.hubs &&
       selHub &&
-      !(twin && z >= 14) &&
       new ScatterplotLayer<Hub>({
         id: "hub-sel-halo",
         data: [selHub],
@@ -657,7 +656,6 @@ export default function MapView({ data }: { data: StaticData }) {
         updateTriggers: { getRadius: sizeKey, getPosition: [twin, beaconK] },
       }),
     L.hubs &&
-      !(twin && z >= 14) &&
       new ScatterplotLayer<Hub>({
         id: "hub-casing",
         data: hubsDraw,
@@ -668,7 +666,6 @@ export default function MapView({ data }: { data: StaticData }) {
         updateTriggers: { getRadius: sizeKey },
       }),
     L.hubs &&
-      !(twin && z >= 14) &&
       new ScatterplotLayer<Hub>({
         id: "hubs",
         data: hubsDraw,
@@ -687,35 +684,20 @@ export default function MapView({ data }: { data: StaticData }) {
       }),
     twin &&
       L.hubs &&
-      new SimpleMeshLayer<Hub>({
+      new ColumnLayer<Hub>({
         id: "hub-beacons",
         data: hubsDraw,
-        mesh: HUB_STRUCT,
-        getPosition: (h) => [h.lon, h.lat, 0],
-        getOrientation: (h) => [0, h.yaw ?? 0, 0],
-        getScale: (h) => [(HUB_DIM[h.type].len / HUB_DIM.M.len) * hubK, (HUB_DIM[h.type].wid / HUB_DIM.M.wid) * hubK, hubK * (h.type === "L" ? 1.15 : 1)],
-        getColor: [255, 255, 255],
-        material: { ambient: 0.6, diffuse: 0.6, shininess: 30, specularColor: [220, 220, 220] },
-        pickable: true,
-        autoHighlight: true,
-        highlightColor: [255, 255, 255, 90],
-        updateTriggers: { getScale: hubK },
-      }),
-    twin &&
-      L.hubs &&
-      new SimpleMeshLayer<Hub>({
-        id: "hub-canopy",
-        data: hubsDraw,
-        mesh: HUB_CANOPY,
-        getPosition: (h) => [h.lon, h.lat, 0],
-        getOrientation: (h) => [0, h.yaw ?? 0, 0],
-        getScale: (h) => [(HUB_DIM[h.type].len / HUB_DIM.M.len) * hubK, (HUB_DIM[h.type].wid / HUB_DIM.M.wid) * hubK, hubK * (h.type === "L" ? 1.15 : 1)],
-        getColor: (h) => rgb(actionColor(h.action), 255),
-        material: { ambient: 0.85, diffuse: 0.5, shininess: 60, specularColor: [255, 240, 220] },
+        diskResolution: 16,
+        radius: z >= 14.5 ? 9 : z >= 13.5 ? 16 : 30,
+        extruded: true,
+        getPosition: (h) => [h.lon, h.lat],
+        getElevation: (h) => beaconH(h),
+        getFillColor: (h) => rgb(actionColor(h.action), h.rank === selRank ? 255 : 235),
+        material: { ambient: 0.9, diffuse: 0.45, shininess: 40, specularColor: [255, 240, 220] },
         pickable: true,
         autoHighlight: true,
         highlightColor: [255, 255, 255, 120],
-        updateTriggers: { getScale: hubK, getColor: selRank },
+        updateTriggers: { getFillColor: selRank, getElevation: beaconK },
       }),
     L.hubs &&
       new TextLayer<Hub>({
@@ -770,7 +752,7 @@ export default function MapView({ data }: { data: StaticData }) {
   const onPick = useCallback((info: PickingInfo) => {
     const st = useStore.getState();
     if (st.placing) return;
-    if ((info.layer?.id === "hubs" || info.layer?.id === "hub-beacons" || info.layer?.id === "hub-canopy") && info.object) st.set({ selected: { kind: "hub", rank: (info.object as Hub).rank } });
+    if ((info.layer?.id === "hubs" || info.layer?.id === "hub-beacons") && info.object) st.set({ selected: { kind: "hub", rank: (info.object as Hub).rank } });
     else if (info.layer?.id === "whatif" && info.object) st.set({ selected: { kind: "whatif", key: (info.object as WhatIfHub).key } });
     else if (info.layer?.id === "stations" && info.object) st.set({ selected: { kind: "station", id: (info.object as { id: string }).id } });
   }, []);
