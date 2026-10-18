@@ -80,5 +80,5 @@ export interface WhatIfHub extends Omit<Hub, "rank" | "id" | "anchor_kind" | "qa
 }
 
 export type Mode = "plan" | "twin";
-export type Panel = "map" | "dashboard" | "method";
+export type Panel = "map" | "dashboard" | "method" | "quality";
 export type CellMetric = "w" | "gap" | "D" | "pop" | "transit";

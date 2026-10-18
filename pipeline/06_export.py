@@ -102,3 +102,10 @@ print(json.dumps(sizes, indent=1), "cəmi KB:", sum(sizes.values()))
 
 # --- Engine üçün hub toxumu (təsdiq axınının başlanğıc siyahısı) ---------------
 (ENGINE_DATA / "hubs_seed.json").write_text(json.dumps(hubs["hubs"], ensure_ascii=False))
+
+
+# --- Data keyfiyyət mərkəzi üçün referanslar (engine) -------------------------
+import shutil
+shutil.copy(BUILD / "baku_boundary.gpkg", ENGINE_DATA / "baku_boundary.gpkg")
+_r = gpd.read_file(BUILD / "ayna_routes.gpkg")
+(ENGINE_DATA / "quality_ref.json").write_text(json.dumps({"ayna_routes": sorted(_r.route)}, ensure_ascii=False))

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from pyproj import Transformer
@@ -25,6 +25,7 @@ from hubcore import HUB_WALK_M, load_core  # noqa: E402
 
 from db import STATUSES, Hub, engine, init_db  # noqa: E402
 import live  # noqa: E402
+import quality  # noqa: E402
 
 DATA = Path(os.environ.get("AYAN_DATA", ROOT / "data"))
 TO_UTM = Transformer.from_crs(4326, 32639, always_xy=True)
@@ -211,3 +212,36 @@ def live_near(lon: float, lat: float, radius: float = 300):
     idx = [i for i in np.argsort(d)[:4] if d[i] <= radius]
     stops = [{"code": str(core.stops.code.iat[i]), "name": str(core.stops["name"].iat[i]), "dist_m": round(float(d[i]))} for i in idx]
     return {"enabled": True, **live.arrivals(stops)}
+
+
+# --- Data keyfiyyət mərkəzi ------------------------------------------------------------
+SAMPLES = {  # açıq datanın real (çirkli) faylları: demo üçün
+    "metro_cixislari.csv": "Metro çıxışları (Bakı Metropoliteni)",
+    "velosiped_parkinqleri.kmz": "Velo/scooter parkinqləri (AYNA)",
+    "ayna_stopsV4.json": "Dayanacaqlar (AYNA xəritə API-si)",
+    "bakubus_gundelik_sernisin_2026.csv": "BakuBus sərnişin datası",
+}
+RAW = ROOT.parent / "datas"
+
+
+@app.post("/quality/check")
+async def quality_check(file: UploadFile = File(...)):
+    raw = await file.read()
+    if len(raw) > 25_000_000:
+        raise HTTPException(413, "Fayl 25 MB-dan böyükdür")
+    try:
+        return quality.check(file.filename or "fayl.csv", raw)
+    except Exception as e:
+        raise HTTPException(422, f"Fayl oxunmadı: {type(e).__name__}: {e}")
+
+
+@app.get("/quality/samples")
+def quality_samples():
+    return [{"file": f, "label": l} for f, l in SAMPLES.items() if (RAW / f).exists()]
+
+
+@app.get("/quality/sample/{name}")
+def quality_sample(name: str):
+    if name not in SAMPLES or not (RAW / name).exists():
+        raise HTTPException(404, "Nümunə tapılmadı")
+    return quality.check(name, (RAW / name).read_bytes())

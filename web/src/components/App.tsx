@@ -10,6 +10,7 @@ import Inspector from "./Inspector";
 import HubLine from "./HubLine";
 import Dashboard from "./Dashboard";
 import Methodology from "./Methodology";
+import Quality from "./Quality";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
@@ -72,6 +73,7 @@ export default function App() {
       )}
       {panel === "dashboard" && <Dashboard data={data} />}
       {panel === "method" && <Methodology data={data} />}
+      {panel === "quality" && <Quality />}
       {toast && (
         <div role="status" className="pointer-events-none absolute left-1/2 top-20 z-40 max-w-xl -translate-x-1/2 rounded-md border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5 text-sm text-[var(--text)] shadow-lg">
           {toast}
