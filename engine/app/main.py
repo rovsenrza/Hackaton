@@ -88,7 +88,7 @@ def evaluate(q: EvalIn):
     reach = core.net.reach(p.x, p.y, 60)
     near_transit = any(core._within(n, reach, 60).any() for n in ("metro", "stops", "stations"))
     lon, lat = to_ll(p.x, p.y)
-    return {"lon": lon, "lat": lat, "moved_m": off, "clicked_blocked_by": blocked, "near_transit_60m": near_transit,
+    return {"lon": lon, "lat": lat, "yaw": core.street_yaw(p.x, p.y), "moved_m": off, "clicked_blocked_by": blocked, "near_transit_60m": near_transit,
             "isochrone": poly_ll(core.net.isochrone_polygon(p.x, p.y, HUB_WALK_M)), **ev,
             "ms": round((time.time() - t) * 1000)}
 
@@ -132,7 +132,7 @@ def optimize(q: OptIn):
         ev = core.evaluate(c.px, c.py, cov=cov, new=new)
         lon, lat = to_ll(c.px, c.py)
         out.append({"rank": rank, "cand": i, "label": c.label, "anchor_kind": c.kind, "action": c.action,
-                    "lon": lon, "lat": lat, "gain_share": round(float(g[i]) / total, 4), **ev})
+                    "lon": lon, "lat": lat, "yaw": core.street_yaw(c.px, c.py), "gain_share": round(float(g[i]) / total, 4), **ev})
     return {"weights": dict(zip(("transit", "pop", "poi"), wv.round(3).tolist())), "hubs": out,
             "closed_share": round(sum(h["gain_share"] for h in out), 4), "ms": round((time.time() - t) * 1000)}
 

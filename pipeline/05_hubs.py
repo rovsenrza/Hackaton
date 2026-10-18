@@ -97,7 +97,7 @@ for c in C.itertuples():
     if c.kind == "parking" or near is not None:
         k = int(np.flatnonzero(parks.id.values == c.ref)[0]) if c.kind == "parking" else near[0]
         # AYNA koordinatı icazəli ərazidədirsə saxlanılır; yolun üstünə düşürsə ən yaxın səki nöqtəsinə köçürülür
-        p, o = core.place(park_xy[k, 0], park_xy[k, 1], r_min=0)
+        p, o = core.place(park_xy[k, 0], park_xy[k, 1], r_min=0, existing=True)
         act.append("upgrade")
         if p is None:
             px.append(park_xy[k, 0]); py.append(park_xy[k, 1]); off.append(0.0)

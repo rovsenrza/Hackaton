@@ -73,6 +73,18 @@ def build_masks(lines: gpd.GeoDataFrame, mpoly: gpd.GeoDataFrame, buildings: gpd
     return gpd.GeoDataFrame({"kind": kind, "width": widths}, geometry=geoms, crs=crs)
 
 
+def street_yaw(tree: STRtree, x: float, y: float) -> float:
+    """Ən yaxın yol xəttinin bu nöqtədəki istiqaməti (dərəcə, şərqdən saat əqrəbinin əksinə): pavilyon küçəyə paralel."""
+    p = Point(x, y)
+    i = tree.nearest(p)
+    if i is None:
+        return 0.0
+    g = tree.geometries[i]
+    s = g.project(p)
+    a, b = g.interpolate(max(s - 3, 0)), g.interpolate(min(s + 3, g.length))
+    return round(float(np.degrees(np.arctan2(b.y - a.y, b.x - a.x))), 1)
+
+
 class HubCore:
     def __init__(self, net: WalkNet, cells: pd.DataFrame, metro: gpd.GeoDataFrame, stops: gpd.GeoDataFrame,
                  stations: gpd.GeoDataFrame, parks: gpd.GeoDataFrame, masks: gpd.GeoDataFrame, K: float,
@@ -122,6 +134,9 @@ class HubCore:
         return best
 
     # --- yerləşdirmə --------------------------------------------------------------
+    def street_yaw(self, x: float, y: float) -> float:
+        return street_yaw(self.road_tree, x, y)
+
     def blocked_by(self, p: Point) -> list[str]:
         return sorted({self.mask_kind[i] for i in self.mask_tree.query(p, predicate="intersects")})
 
@@ -154,7 +169,7 @@ class HubCore:
                     return True
         return False
 
-    def place(self, x: float, y: float, r_min: float = 4.0):
+    def place(self, x: float, y: float, r_min: float = 4.0, existing: bool = False):
         """(x, y) düyününə ≤ 60 m piyada, icazəli ərazidə ən yaxşı nöqtə → (Point, ofset m) və ya (None, None).
 
         Ən yaxşı = səki zolağının ortası (yol kənarından ~4 m) və düyünə mümkün qədər yaxın.
@@ -162,6 +177,10 @@ class HubCore:
         from shapely import points as mk_points
         if r_min == 0:
             p0 = Point(x, y)
+            if existing and self.is_free(p0):
+                # AYNA-nın real parkinq koordinatı: real dünyada sınanıb (çox vaxt prospektin ayırıcı zolağında);
+                # yalnız sərt maskalar yoxlanılır
+                return p0, 0.0
             if self.is_free(p0) and self.edge_distance([p0])[0] >= ROAD_CLEAR + 0.5 and not self.between_roads(p0):
                 return p0, 0.0
         rr, aa = np.meshgrid(np.arange(r_min, 46, 2.0), np.linspace(0, 2 * np.pi, 48, endpoint=False))

@@ -39,7 +39,7 @@ write_geojson(routes, "bus_routes", ["route", "pax", "pax_status", "n_stops", "o
 off = gpd.read_file(BUILD / "official_hubs.gpkg")
 off["modes"] = off.modes.apply(json.loads)
 write_geojson(off, "official_hubs", ["id", "name", "n_stops", "n_routes", "modes"], simplify=False)
-write_geojson(gpd.read_file(BUILD / "rail_stations.gpkg"), "rail_stations", ["name", "n_routes"], simplify=False)
+write_geojson(gpd.read_file(BUILD / "rail_stations.gpkg"), "rail_stations", ["name", "n_routes", "n_trips"], simplify=False)
 
 metro = gpd.read_file(BUILD / "metro_exits.gpkg")
 metro["station_pax"] = metro.station_pax.round(-2)
@@ -80,7 +80,13 @@ for h in hubs["hubs"]:
                   "geometry": json.loads(json.dumps(g.__geo_interface__), parse_float=lambda v: round(float(v), 6))})
 (WEB_DATA / "isochrones.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats}, separators=(",", ":")))
 sizes["isochrones.geojson"] = round((WEB_DATA / "isochrones.geojson").stat().st_size / 1024)
+# pavilyon istiqaməti: ən yaxın küçəyə paralel
+from shapely.strtree import STRtree
+from hubcore import street_yaw
+_m = gpd.read_parquet(ENGINE_DATA / "masks.parquet")
+_road_tree = STRtree(list(_m[_m.kind == "roadline"].geometry))
 for h in hubs["hubs"]:
+    h["yaw"] = street_yaw(_road_tree, h["x"], h["y"])
     h.pop("x"), h.pop("y")
 (WEB_DATA / "hubs.json").write_text(json.dumps(hubs, ensure_ascii=False, separators=(",", ":")))
 sizes["hubs.json"] = round((WEB_DATA / "hubs.json").stat().st_size / 1024)

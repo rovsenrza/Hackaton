@@ -16,6 +16,8 @@ export interface Hub {
   label: string;
   lon: number;
   lat: number;
+  /** pavilyonun istiqaməti: ən yaxın küçəyə paralel (dərəcə, şərqdən saat əqrəbinin əksinə) */
+  yaw?: number;
   offset_m: number;
   qa: string;
   gain_share: number;

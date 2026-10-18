@@ -75,12 +75,14 @@ for r in routes_raw:
                 lines.append(LineString(c))
     for s in r.get("stops") or []:
         lon, lat = s["geometries"]["geoJson"]["coordinates"]
-        rs_rows.append({"route": norm(name), "kind": kind, "code": s["code"], "name": s["name"], "lon": lon, "lat": lat,
+        rs_rows.append({"route": norm(name), "long": r.get("longName") or name, "kind": kind, "code": s["code"], "name": s["name"], "lon": lon, "lat": lat,
                         "seq": int(s.get("sequenceNumber") or 0), "hub": bool(s.get("hub"))})
     if kind == "city_bus" and lines:
         rows.append({"route": norm(name), "long_name": r.get("longName"), "operator": r.get("operatorName"),
                      "geometry": lines[0] if len(lines) == 1 else MultiLineString(lines)})
 rs = pd.DataFrame(rs_rows)
+# qatar "route"-u əslində reysdir ("Baku-Pirshagi-Sumgayit-6609"): xətt = nömrəsiz, istiqamətdən asılı olmayan ad
+rs["line"] = rs["long"].astype(str).str.replace(r"-\d+$", "", regex=True).map(lambda t: "–".join(sorted(t.split("-"))))
 rs["in_baku"] = gpd.GeoSeries(gpd.points_from_xy(rs.lon, rs.lat), crs=WGS84).within(baku).values
 routes = gpd.GeoDataFrame(rows, geometry="geometry", crs=WGS84)
 routes = routes[routes.intersects(baku)].reset_index(drop=True)
@@ -99,8 +101,13 @@ st["routes"] = st.routes.apply(json.dumps)
 st.to_file(BUILD / "ayna_stops.gpkg")
 
 # --- 3. Elektrik qatarı stansiyaları ----------------------------------------------------
+# ADY datasında adlar ingilis transliterasiyasındadır; "route" əslində reysdir → xətt = unikal longName
+RAIL_AZ = {"Baku": "Bakı", "Bakikhanov": "Bakıxanov", "Bilajari": "Biləcəri", "Goradil": "Goradil", "Keshle": "Keşlə",
+           "Khirdalan": "Xırdalan", "Koroghlu": "Koroğlu", "Mammadli": "Məmmədli", "Novkhani": "Novxanı",
+           "Pirshaghi": "Pirşağı", "Sabunchu": "Sabunçu", "Zabrat1": "Zabrat-1", "Zabrat2": "Zabrat-2"}
 rail = rs[(rs.kind == "rail") & rs.in_baku].groupby("name").agg(lon=("lon", "mean"), lat=("lat", "mean"),
-                                                               n_routes=("route", "nunique")).reset_index()
+                                                               n_trips=("route", "nunique"), n_routes=("line", "nunique")).reset_index()
+rail["name"] = rail.name.map(lambda n: RAIL_AZ.get(n, n))
 rail = gpd.GeoDataFrame(rail, geometry=gpd.points_from_xy(rail.lon, rail.lat), crs=WGS84).drop(columns=["lon", "lat"])
 rail.to_file(BUILD / "rail_stations.gpkg")
 
