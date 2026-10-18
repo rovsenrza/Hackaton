@@ -17,6 +17,7 @@ interface S {
   engineOnline: boolean | null;
   statuses: Record<string, string>;
   toast: string | null;
+  copilotOpen: boolean;
   set: (p: Partial<S>) => void;
   toggle: (k: LayerKey) => void;
 }
@@ -35,6 +36,7 @@ export const useStore = create<S>((set) => ({
   engineOnline: null,
   statuses: {},
   toast: null,
+  copilotOpen: false,
   set: (p) => set(p),
   toggle: (k) => set((s) => ({ layers: { ...s.layers, [k]: !s.layers[k] } })),
 }));

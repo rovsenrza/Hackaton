@@ -26,6 +26,8 @@ from hubcore import HUB_WALK_M, load_core  # noqa: E402
 from db import STATUSES, Hub, engine, init_db  # noqa: E402
 import live  # noqa: E402
 import quality  # noqa: E402
+import copilot  # noqa: E402
+import difflib  # noqa: E402
 
 DATA = Path(os.environ.get("AYAN_DATA", ROOT / "data"))
 TO_UTM = Transformer.from_crs(4326, 32639, always_xy=True)
@@ -74,12 +76,11 @@ class EvalIn(BaseModel):
     lat: float
 
 
-@app.post("/evaluate")
-def evaluate(q: EvalIn):
+def run_evaluate(lon: float, lat: float) -> dict:
+    """What-if: (lon, lat) nöqtəsinə qoyulan hub (icazəli yerə köçürülür) → göstəricilər + izoxron."""
     t = time.time()
-    x, y = TO_UTM.transform(q.lon, q.lat)
-    clicked = Point(x, y)
-    blocked = core.blocked_by(clicked)
+    x, y = TO_UTM.transform(lon, lat)
+    blocked = core.blocked_by(Point(x, y))
     p, off = core.place(x, y, r_min=0)
     if p is None:
         raise HTTPException(422, detail={"msg": "Bu nöqtənin 60 m piyada radiusunda hub üçün icazəli yer tapılmadı",
@@ -88,10 +89,15 @@ def evaluate(q: EvalIn):
     # yaxınlıqda nəqliyyat düyünü (≤ 60 m piyada): hub-un mənası keçid nöqtəsidir
     reach = core.net.reach(p.x, p.y, 60)
     near_transit = any(core._within(n, reach, 60).any() for n in ("metro", "stops", "stations"))
-    lon, lat = to_ll(p.x, p.y)
-    return {"lon": lon, "lat": lat, "yaw": core.street_yaw(p.x, p.y), "moved_m": off, "clicked_blocked_by": blocked, "near_transit_60m": near_transit,
-            "isochrone": poly_ll(core.net.isochrone_polygon(p.x, p.y, HUB_WALK_M)), **ev,
+    plon, plat = to_ll(p.x, p.y)
+    return {"lon": plon, "lat": plat, "yaw": core.street_yaw(p.x, p.y), "moved_m": off, "clicked_blocked_by": blocked,
+            "near_transit_60m": near_transit, "isochrone": poly_ll(core.net.isochrone_polygon(p.x, p.y, HUB_WALK_M)), **ev,
             "ms": round((time.time() - t) * 1000)}
+
+
+@app.post("/evaluate")
+def evaluate(q: EvalIn):
+    return run_evaluate(q.lon, q.lat)
 
 
 # --- MCLP: istifadəçi çəkiləri ilə -----------------------------------------------
@@ -103,22 +109,26 @@ class OptIn(BaseModel):
     exclude_upgrade: bool = False
 
 
-@app.post("/optimize")
-def optimize(q: OptIn):
+def run_optimize(transit=0.45, pop=0.35, poi=0.20, n=10, exclude_upgrade=False,
+                 center_lon: float | None = None, center_lat: float | None = None, radius_km: float | None = None) -> dict:
+    """MCLP: xidmətsiz tələbatı maksimallaşdıran sıralı hub seçimi (istəyə görə ərazi ilə məhdud)."""
     t = time.time()
-    wv = np.array([q.transit, q.pop, q.poi], float)
+    wv = np.array([transit, pop, poi], float)
     if wv.sum() <= 0:
         raise HTTPException(400, "Çəkilərin cəmi sıfırdan böyük olmalıdır")
     wv /= wv.sum()
     w = (COMP @ wv) * GAP
     allowed = OK.copy()
-    if q.exclude_upgrade:
+    if exclude_upgrade:
         allowed &= C.action.eq("new").values
+    if center_lon is not None and center_lat is not None and radius_km:
+        cx, cy = TO_UTM.transform(center_lon, center_lat)
+        allowed &= np.hypot(PXY[:, 0] - cx, PXY[:, 1] - cy) <= radius_km * 1000
     left = w.copy()
     total = float(w.sum())
     taken = np.zeros(len(w), bool)
     out = []
-    for rank in range(1, q.n + 1):
+    for rank in range(1, n + 1):
         g = A @ left
         g[~allowed] = -1
         i = int(np.argmax(g))
@@ -136,6 +146,11 @@ def optimize(q: OptIn):
                     "lon": lon, "lat": lat, "yaw": core.street_yaw(c.px, c.py), "gain_share": round(float(g[i]) / total, 4), **ev})
     return {"weights": dict(zip(("transit", "pop", "poi"), wv.round(3).tolist())), "hubs": out,
             "closed_share": round(sum(h["gain_share"] for h in out), 4), "ms": round((time.time() - t) * 1000)}
+
+
+@app.post("/optimize")
+def optimize(q: OptIn):
+    return run_optimize(q.transit, q.pop, q.poi, q.n, q.exclude_upgrade)
 
 
 # --- təsdiq axını -----------------------------------------------------------------
@@ -245,3 +260,115 @@ def quality_sample(name: str):
     if name not in SAMPLES or not (RAW / name).exists():
         raise HTTPException(404, "Nümunə tapılmadı")
     return quality.check(name, (RAW / name).read_bytes())
+
+
+# --- AYAN Kopilot (Claude) ---------------------------------------------------------------
+SEED = json.loads((DATA / "hubs_seed.json").read_text()) if (DATA / "hubs_seed.json").exists() else []
+METRICS = json.loads((DATA / "metrics.json").read_text()) if (DATA / "metrics.json").exists() else {}
+_TR = str.maketrans({"ә": "ə", "Ә": "Ə"})
+
+
+def _norm(s: str) -> str:
+    return str(s).translate(_TR).lower().replace("m/st", "").strip()
+
+
+def _places():
+    out = []
+    for name, gdf, kind in ((None, core.metro, "metro"), (None, core.official, "AYNA mübadilə mərkəzi"),
+                            (None, core.rail, "qatar stansiyası"), (None, core.stations, "avtovağzal"),
+                            (None, core.stops, "dayanacaq")):
+        col = "station_az" if kind == "metro" else "name"
+        for _, r in gdf.iterrows():
+            lon, lat = to_ll(r.geometry.x, r.geometry.y)
+            out.append({"name": str(r[col]).translate(_TR), "kind": kind, "lon": lon, "lat": lat})
+    return out
+
+
+PLACES = _places()
+_COMPACT = ("rank", "label", "action", "type", "docks", "pop_covered", "pop_newly_served", "transit_daily", "trips_day",
+            "trips_gross_day", "co2_t_year", "metro_stations", "rail_stations", "official_hub", "bus_routes", "parkings_400",
+            "stability", "gain_share", "lon", "lat")
+
+
+def _compact(h: dict) -> dict:
+    d = {k: h[k] for k in _COMPACT if k in h}
+    if "bus_routes" in d:
+        d["bus_routes"] = len(d["bus_routes"])
+    return d
+
+
+def t_city(_):
+    h = METRICS.get("hubs", {})
+    return {"şəhər": h.get("city"), "doğrulama": h.get("validation"), "proqram": h.get("program"),
+            "xidmətsiz_tələbatın_bağlanan_payı": h.get("mclp", {}).get("share_closed")}, []
+
+
+def t_top(a):
+    hubs = [h for h in SEED if a["action"] == "all" or h["action"] == a["action"]][: max(1, min(50, a["n"]))]
+    return {"hubs": [_compact(h) for h in hubs]}, [{"type": "show_base"}]
+
+
+def t_details(a):
+    h = next((x for x in SEED if x["rank"] == a["rank"]), None)
+    if not h:
+        raise ValueError("Bu sıra nömrəli hub yoxdur (1–50)")
+    return _compact(h) | {"qa": h.get("qa")}, [{"type": "select_hub", "rank": h["rank"], "lon": h["lon"], "lat": h["lat"]}]
+
+
+def t_find(a):
+    q = _norm(a["query"])
+    scored = []
+    for p in PLACES:
+        n = _norm(p["name"])
+        s = 1.0 if q in n else difflib.SequenceMatcher(None, q, n).ratio()
+        if s >= 0.6:
+            scored.append((s + (0.1 if p["kind"] != "dayanacaq" else 0), p))
+    scored.sort(key=lambda t: -t[0])
+    res = [p for _, p in scored[:5]]
+    acts = [{"type": "fly", "lon": res[0]["lon"], "lat": res[0]["lat"], "zoom": 14}] if res else []
+    return {"nəticələr": res or "tapılmadı"}, acts
+
+
+def t_opt(a):
+    r = run_optimize(a["transit"], a["pop"], a["poi"], max(1, min(50, a["n"])), a["exclude_upgrade"],
+                     a.get("center_lon"), a.get("center_lat"), a.get("radius_km"))
+    return {"weights": r["weights"], "closed_share": r["closed_share"], "hubs": [_compact(h) for h in r["hubs"]]}, \
+        [{"type": "show_scenario", "hubs": r["hubs"]}]
+
+
+def t_eval(a):
+    r = run_evaluate(a["lon"], a["lat"])
+    return {k: v for k, v in r.items() if k != "isochrone"} | {"bus_routes": len(r["bus_routes"])}, [{"type": "whatif", "hub": r}]
+
+
+IMPL = {"city_overview": t_city, "top_hubs": t_top, "hub_details": t_details, "find_place": t_find,
+        "optimize_hubs": t_opt, "evaluate_location": t_eval}
+
+
+class ChatIn(BaseModel):
+    session_id: str | None = None
+    message: str = Field(min_length=1, max_length=2000)
+
+
+@app.get("/copilot/status")
+def copilot_status():
+    return {"enabled": copilot.enabled(), "model": copilot.MODEL}
+
+
+@app.post("/copilot/chat")
+def copilot_chat(q: ChatIn):
+    if not copilot.enabled():
+        raise HTTPException(503, "Kopilot üçün engine/.env faylına ANTHROPIC_API_KEY əlavə edin")
+    return copilot.chat(q.session_id, q.message, IMPL)
+
+
+class MemoIn(BaseModel):
+    hub: dict
+
+
+@app.post("/copilot/memo")
+def copilot_memo(q: MemoIn):
+    if not copilot.enabled():
+        raise HTTPException(503, "Kopilot üçün engine/.env faylına ANTHROPIC_API_KEY əlavə edin")
+    ctx = {k: METRICS.get("hubs", {}).get(k) for k in ("city", "program")}
+    return copilot.memo(_compact(q.hub) | {"qa": q.hub.get("qa"), "id": q.hub.get("id")}, ctx)

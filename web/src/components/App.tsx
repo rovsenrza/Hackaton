@@ -11,13 +11,14 @@ import HubLine from "./HubLine";
 import Dashboard from "./Dashboard";
 import Methodology from "./Methodology";
 import Quality from "./Quality";
+import Copilot from "./Copilot";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
 export default function App() {
   const [data, setData] = useState<StaticData | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const { panel, toast, set } = useStore();
+  const { panel, toast, set, copilotOpen } = useStore();
 
   useEffect(() => {
     loadStatic().then(setData).catch((e) => setErr(String(e)));
@@ -67,7 +68,13 @@ export default function App() {
       {panel === "map" && (
         <>
           <LayerRail data={data} />
-          <Inspector data={data} />
+          {copilotOpen ? <Copilot /> : <Inspector data={data} />}
+          {!copilotOpen && (
+            <button onClick={() => set({ copilotOpen: true })}
+              className="absolute right-4 bottom-44 z-30 rounded-full bg-[var(--hub)] px-4 py-2.5 text-sm font-semibold text-[var(--bg)] shadow-xl hover:brightness-110">
+              AYAN Kopilot
+            </button>
+          )}
           <HubLine data={data} />
         </>
       )}

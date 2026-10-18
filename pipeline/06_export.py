@@ -109,3 +109,4 @@ import shutil
 shutil.copy(BUILD / "baku_boundary.gpkg", ENGINE_DATA / "baku_boundary.gpkg")
 _r = gpd.read_file(BUILD / "ayna_routes.gpkg")
 (ENGINE_DATA / "quality_ref.json").write_text(json.dumps({"ayna_routes": sorted(_r.route)}, ensure_ascii=False))
+shutil.copy(WEB_DATA / "metrics.json", ENGINE_DATA / "metrics.json")  # Kopilot üçün şəhər göstəriciləri

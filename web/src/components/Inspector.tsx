@@ -7,6 +7,46 @@ import { approx, meters, pct, tons } from "@/lib/format";
 import { C } from "@/lib/theme";
 import type { Hub, WhatIfHub } from "@/lib/types";
 import { getMap } from "./MapView";
+import { MiniMd } from "./Copilot";
+
+/** Hub üçün AI ilə rəsmi əsaslandırma sənədi (rəqəmlər yalnız hub kartından) */
+function MemoButton({ hub }: { hub: Hub }) {
+  const [md, setMd] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    try {
+      const r = await api<{ markdown?: string; error?: string }>("/copilot/memo", { method: "POST", body: JSON.stringify({ hub }) });
+      setMd(r.markdown ?? r.error ?? "Sənəd alınmadı");
+    } catch (e) {
+      setMd((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const download = () => {
+    if (!md) return;
+    const url = URL.createObjectURL(new Blob([md], { type: "text/markdown" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${hub.id}_esaslandirma.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <div className="mt-3">
+      <button onClick={run} disabled={busy} className="w-full rounded border border-[var(--hub)] px-3 py-1.5 text-sm text-[var(--hub)] hover:bg-[var(--hub)] hover:text-[var(--bg)] disabled:opacity-50">
+        {busy ? "Sənəd hazırlanır…" : "Əsaslandırma sənədi hazırla (AI)"}
+      </button>
+      {md && (
+        <div className="mt-2 max-h-72 overflow-y-auto rounded border border-[var(--line)] bg-[var(--bg)]/60 p-3">
+          <MiniMd text={md} />
+          <button onClick={download} className="mt-2 text-xs text-[var(--hub)] underline">.md kimi yüklə</button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const STATUSES = ["Təklif", "Təsdiq gözləyir", "Təsdiqləndi", "Rədd edildi"];
 type Src = "measured" | "model" | "scenario";
@@ -229,6 +269,7 @@ export default function Inspector({ data }: { data: StaticData }) {
             <a href={`https://www.google.com/maps/@${hub.lat},${hub.lon},60m/data=!3m1!1e3`} target="_blank" rel="noreferrer"
               className="flex-1 rounded border border-[var(--line)] px-3 py-1.5 text-center text-sm hover:bg-[var(--surface2)]">Peyk görüntüsündə yoxla</a>
           </div>
+          {s.engineOnline && <MemoButton hub={hub} />}
           {!s.optimized && <p className="mt-2 font-mono text-[10px] text-[var(--muted)]">{hub.id}</p>}
         </div>
       )}
