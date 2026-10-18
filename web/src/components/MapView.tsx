@@ -11,14 +11,14 @@ import type { StyleSpecification } from "maplibre-gl";
 import circle from "@turf/circle";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { EngineOffline, post, type StaticData } from "@/lib/data";
+import { EngineOffline, api, post, type StaticData } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { ACTION_LABEL, C, GAP_STOPS, actionColor, rgb, type RGBA } from "@/lib/theme";
 import type { H3Row, Hub, WhatIfHub } from "@/lib/types";
 import { approx } from "@/lib/format";
 import { BASEMAP_URL, BEFORE_LABELS, BEFORE_ROADS, BUILDINGS_3D, loadCaspianStyle } from "./map/basemap";
 import { icon } from "./map/symbols";
-import { PLAYBACK, buildFleet, updateFleet, type Bus } from "./map/buses";
+import { LIVE_POLL_MS, LiveTracker, buildFleet, updateFleet, type Bus, type LiveBus, type LiveBusObj } from "./map/buses";
 import { BUS_MESH } from "./map/meshes";
 import { declutter, square, textW, worldPx, type Box, type Candidate } from "./map/declutter";
 
@@ -155,6 +155,64 @@ export default function MapView({ data }: { data: StaticData }) {
   // 3D avtobuslar: real marşrut həndəsəsi + sərnişinə görə park bölgüsü (simulyasiya)
   const fleet = useMemo(() => buildFleet(data.routes), [data.routes]);
   const busClock = useRef(performance.now());
+
+  // real avtobuslar (AYNA SIRI, engine üzərindən): ekrandakı ərazi, LIVE_POLL_MS-dən bir və xəritə dayananda.
+  // null = canlı data yoxdur (engine söndürülüb); [] = canlıdır, sadəcə ərazidə avtobus yoxdur
+  const [liveBuses, setLiveBuses] = useState<LiveBus[] | null>(null);
+  const liveOn = s.mode === "twin" && s.engineOnline && s.layers.routes;
+  useEffect(() => {
+    if (!liveOn) {
+      setLiveBuses(null);
+      return;
+    }
+    let alive = true;
+    let busy = false;
+    let seq = 0;
+    let debounce: ReturnType<typeof setTimeout> | undefined;
+    let m: ReturnType<NonNullable<ReturnType<typeof getMap>>["getMap"]> | undefined;
+    const onMoveEnd = () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => load(true), 400);
+    };
+    const load = (force = false) => {
+      if (!alive || (busy && !force)) return;
+      if (!m) {
+        m = getMap()?.getMap();
+        if (!m) {
+          debounce = setTimeout(load, 1000); // xəritə hələ yüklənməyib
+          return;
+        }
+        m.on("moveend", onMoveEnd);
+      }
+      // ekrandan 30% geniş, ən azı ~2×2 km: yaxın zoomda da kifayət qədər dayanacaq seçilir
+      const b = m.getBounds();
+      const c = b.getCenter();
+      const hx = Math.max(((b.getEast() - b.getWest()) / 2) * 1.3, 0.012);
+      const hy = Math.max(((b.getNorth() - b.getSouth()) / 2) * 1.3, 0.009);
+      const my = ++seq;
+      busy = true;
+      api<{ enabled: boolean; buses: LiveBus[] }>(`/live/buses?w=${c.lng - hx}&s=${c.lat - hy}&e=${c.lng + hx}&n=${c.lat + hy}`)
+        .then((r) => alive && my === seq && setLiveBuses(r.enabled ? r.buses : null))
+        .catch(() => {}) // keçici xəta: əvvəlki avtobuslar qalır, simulyasiyaya keçilmir
+        .finally(() => {
+          if (my === seq) busy = false;
+        });
+    };
+    load();
+    const t = setInterval(load, LIVE_POLL_MS);
+    return () => {
+      alive = false;
+      clearInterval(t);
+      clearTimeout(debounce);
+      m?.off("moveend", onMoveEnd);
+    };
+  }, [liveOn]);
+  const tracker = useMemo(() => new LiveTracker(routePaths), [routePaths]);
+  useEffect(() => {
+    if (liveBuses) tracker.update(liveBuses, performance.now());
+    else tracker.clear();
+  }, [tracker, liveBuses]);
+  const isLive = liveBuses !== null;
 
   useEffect(() => {
     if (s.mode !== "twin") return;
@@ -337,7 +395,9 @@ export default function MapView({ data }: { data: StaticData }) {
     billboard: true,
   };
 
-  const busesNow = twin && zoom >= 14 ? updateFleet(fleet, (performance.now() - busClock.current) / 1000) : [];
+  // real avtobuslar: iki GPS ölçüsü arasında marşrut boyunca hərəkət (hər kadr yenilənir)
+  const liveNow = twin && isLive ? tracker.frame(performance.now()) : [];
+  const busesNow: Bus[] = !(twin && zoom >= 14) ? [] : isLive ? liveNow : updateFleet(fleet, (performance.now() - busClock.current) / 1000);
   // orta zoomda avtobuslar vizual böyüdülür (real 12 m avtobus 14–16 zoomda bir neçə pikseldir); küçə səviyyəsində real ölçü
   const busK = zoom >= 17 ? 1 : zoom >= 16 ? 1.5 : zoom >= 15 ? 2.2 : 3.2;
   // marşrut nömrələri yalnız görünən avtobuslar üçün (performans)
@@ -345,7 +405,7 @@ export default function MapView({ data }: { data: StaticData }) {
     if (!(twin && zoom >= 15.5)) return [];
     const bb = getMap()?.getMap().getBounds();
     if (!bb) return [];
-    return busesNow.filter((b) => bb.contains([b.position[0], b.position[1]])).slice(0, 250);
+    return busesNow.filter((b) => ((b as Partial<LiveBusObj>).fade ?? 1) > 0.6 && bb.contains([b.position[0], b.position[1]])).slice(0, 250);
   })();
 
   const layers = [
@@ -415,10 +475,31 @@ export default function MapView({ data }: { data: StaticData }) {
         mesh: BUS_MESH,
         getPosition: (b) => [b.position[0], b.position[1], 0],
         getOrientation: (b) => [0, b.yaw, 0],
-        getScale: [busK, busK, busK],
+        getScale: (b) => {
+          const k = busK * ((b as Partial<LiveBusObj>).fade ?? 1);
+          return [k, k, k];
+        },
         getColor: [255, 255, 255],
         material: { ambient: 0.6, diffuse: 0.6, shininess: 70, specularColor: [230, 235, 255] },
-        updateTriggers: { getPosition: time, getOrientation: time, getScale: busK },
+        pickable: isLive,
+        updateTriggers: { getPosition: time, getOrientation: time, getScale: [busK, time] },
+      }),
+    twin &&
+      L.routes &&
+      isLive &&
+      zoom < 14 &&
+      new ScatterplotLayer<Bus>({
+        id: "buses-live-dots",
+        data: liveNow,
+        getPosition: (b) => [b.position[0], b.position[1]],
+        getRadius: (b) => 4 * ((b as Partial<LiveBusObj>).fade ?? 1),
+        radiusUnits: "pixels",
+        getFillColor: rgb("#FFB020", 235),
+        stroked: true,
+        getLineColor: rgb(C.bg, 255),
+        lineWidthUnits: "pixels",
+        getLineWidth: 1,
+        pickable: true,
       }),
     twin &&
       L.routes &&
@@ -442,6 +523,7 @@ export default function MapView({ data }: { data: StaticData }) {
       }),
     twin &&
       L.routes &&
+      !isLive &&
       new TripsLayer({
         id: "trips",
         data: trips,
@@ -779,6 +861,14 @@ export default function MapView({ data }: { data: StaticData }) {
       `<div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:${color};margin-bottom:2px">${kicker}</div><div style="font-weight:700;font-size:13px">${title}</div>`;
     const sub = (t: string) => `<div style="color:${C.muted}">${t}</div>`;
     const id = info.layer?.id;
+    if ((id === "buses" || id === "buses-live-dots") && "live" in o) {
+      const b = (o as unknown as { live: LiveBus }).live;
+      const esc = (t: string | null) => String(t ?? "—").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+      return {
+        html: `${head("#FFB020", "Canlı avtobus · AYNA", `№ ${esc(b.line)} → ${esc(b.destination)}`)}${sub(`Avtobus ${esc(b.id)}${b.occupancy ? ` · ${esc(b.occupancy)}` : ""}`)}`,
+        style,
+      };
+    }
     if (id === "cells") {
       const r = o as unknown as H3Row;
       return {
@@ -850,11 +940,6 @@ export default function MapView({ data }: { data: StaticData }) {
         if (useStore.getState().mode === "twin") m.setLayoutProperty(BUILDINGS_3D.id, "visibility", "visible");
       }}
     >
-      {twin && L.routes && (
-        <div className="pointer-events-none absolute bottom-48 left-1/2 z-10 -translate-x-1/2 rounded bg-[var(--surface)]/90 px-3 py-1.5 text-[11px] text-[var(--muted)] ring-1 ring-[var(--line)]">
-          Avtobuslar: simulyasiya · AYNA-nın real marşrutları, ~2 350 avtobus sərnişin payına görə · {PLAYBACK}× sürətləndirilmiş
-        </div>
-      )}
       <DeckOverlay
         interleaved
         layers={layers}

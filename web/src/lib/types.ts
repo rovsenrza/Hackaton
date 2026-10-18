@@ -70,12 +70,23 @@ export interface HubsFile {
 /** H3 res9 sətri: [h, pop, transit, D, w, gap, dpark] */
 export type H3Row = [string, number, number, number, number, number | null, number | null];
 
+/** Canlı Apar (Tripy) vasitə sıxlığı: hub kartında AYNA-nın öz parkinq şəbəkəsindən müstəqil tələbat sübutu */
+export interface AparLive {
+  has_live: boolean;
+  count: number;
+  by_type?: Record<string, number>;
+  by_status?: Record<string, number>;
+  avg_charge?: number | null;
+  error?: string;
+}
+
 export interface WhatIfHub extends Omit<Hub, "rank" | "id" | "anchor_kind" | "qa" | "gain_share"> {
   key: string;
   moved_m: number;
   clicked_blocked_by: string[];
   near_transit_60m: boolean;
   isochrone: GeoJSON.Geometry;
+  apar_live: AparLive;
   ms: number;
 }
 

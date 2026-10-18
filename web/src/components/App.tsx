@@ -69,12 +69,6 @@ export default function App() {
         <>
           <LayerRail data={data} />
           {copilotOpen ? <Copilot /> : <Inspector data={data} />}
-          {!copilotOpen && (
-            <button onClick={() => set({ copilotOpen: true })}
-              className="absolute right-4 bottom-44 z-30 rounded-full bg-[var(--hub)] px-4 py-2.5 text-sm font-semibold text-[var(--bg)] shadow-xl hover:brightness-110">
-              AYAN Kopilot
-            </button>
-          )}
           <HubLine data={data} />
         </>
       )}

@@ -25,6 +25,7 @@ from hubcore import HUB_WALK_M, load_core  # noqa: E402
 
 from db import STATUSES, Hub, engine, init_db  # noqa: E402
 import live  # noqa: E402
+import apar  # noqa: E402
 import quality  # noqa: E402
 import copilot  # noqa: E402
 import difflib  # noqa: E402
@@ -90,9 +91,10 @@ def run_evaluate(lon: float, lat: float) -> dict:
     reach = core.net.reach(p.x, p.y, 60)
     near_transit = any(core._within(n, reach, 60).any() for n in ("metro", "stops", "stations"))
     plon, plat = to_ll(p.x, p.y)
+    apar_live = apar.near(plon, plat, HUB_WALK_M) if apar.enabled() else {"has_live": False, "count": 0}
     return {"lon": plon, "lat": plat, "yaw": core.street_yaw(p.x, p.y), "moved_m": off, "clicked_blocked_by": blocked,
             "near_transit_60m": near_transit, "isochrone": poly_ll(core.net.isochrone_polygon(p.x, p.y, HUB_WALK_M)), **ev,
-            "ms": round((time.time() - t) * 1000)}
+            "apar_live": apar_live, "ms": round((time.time() - t) * 1000)}
 
 
 @app.post("/evaluate")
@@ -227,6 +229,40 @@ def live_near(lon: float, lat: float, radius: float = 300):
     idx = [i for i in np.argsort(d)[:4] if d[i] <= radius]
     stops = [{"code": str(core.stops.code.iat[i]), "name": str(core.stops["name"].iat[i]), "dist_m": round(float(d[i]))} for i in idx]
     return {"enabled": True, **live.arrivals(stops)}
+
+
+STOP_NR = core.stops.n_routes.values
+
+
+@app.get("/live/buses")
+def live_buses(w: float, s: float, e: float, n: float, max_stops: int = 20):
+    """Ekrandakı ərazidə real avtobuslar: hər xanadan ən çox marşrutlu dayanacaq.
+
+    Şəbəkə mütləqdir (xana ölçüsü 250 m-dən 8 km-ə qədər, koordinata bağlı): xəritə azca sürüşəndə eyni
+    dayanacaqlar seçilir, avtobuslar yox olmur.
+    """
+    if not live.enabled():
+        return {"enabled": False, "buses": []}
+    x0, y0 = TO_UTM.transform(w, s)
+    x1, y1 = TO_UTM.transform(e, n)
+    inside = np.flatnonzero((STOP_XY[:, 0] >= x0) & (STOP_XY[:, 0] <= x1) & (STOP_XY[:, 1] >= y0) & (STOP_XY[:, 1] <= y1))
+    span = max(x1 - x0, y1 - y0) / 5
+    cell = next((c for c in (250, 500, 1000, 2000, 4000) if c >= span), 8000)
+    best: dict[tuple[int, int], int] = {}
+    for i in inside:
+        key = (int(STOP_XY[i, 0] // cell), int(STOP_XY[i, 1] // cell))
+        if key not in best or STOP_NR[i] > STOP_NR[best[key]]:
+            best[key] = i
+    picked = sorted(best.values(), key=lambda i: -STOP_NR[i])[:max(1, min(max_stops, 20))]
+    return {"enabled": True, **live.buses([str(core.stops.code.iat[i]) for i in picked])}
+
+
+# --- canlı Apar vasitələri (Tripy Mobility) ------------------------------------------
+@app.get("/live/apar")
+def live_apar(lon: float, lat: float, radius: float = HUB_WALK_M):
+    if not apar.enabled():
+        return {"enabled": False, "has_live": False, "count": 0}
+    return {"enabled": True, **apar.near(lon, lat, radius)}
 
 
 # --- Data keyfiyyət mərkəzi ------------------------------------------------------------

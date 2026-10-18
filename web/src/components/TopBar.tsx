@@ -13,7 +13,7 @@ const PANELS: { id: Panel; label: string }[] = [
 ];
 
 export default function TopBar() {
-  const { mode, panel, engineOnline, set } = useStore();
+  const { mode, panel, engineOnline, copilotOpen, set } = useStore();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setMode = (m: "plan" | "twin") => {
@@ -52,6 +52,12 @@ export default function TopBar() {
       </nav>
 
       <div className="ml-auto flex items-center gap-3">
+        {panel === "map" && !copilotOpen && (
+          <button onClick={() => set({ copilotOpen: true })}
+            className="rounded-full bg-[var(--hub)] px-4 py-2 text-sm font-semibold text-[var(--bg)] shadow-lg hover:brightness-110">
+            AYAN Kopilot
+          </button>
+        )}
         <div className="flex rounded-md bg-[var(--surface)]/95 p-1 shadow-lg ring-1 ring-[var(--line)]" role="group" aria-label="Görünüş rejimi">
           <button onClick={() => setMode("plan")} aria-pressed={mode === "plan"}
             className={`rounded px-3 py-1.5 text-sm ${mode === "plan" ? "bg-[var(--surface2)]" : "text-[var(--muted)] hover:text-[var(--text)]"}`}>

@@ -10,3 +10,5 @@ engine/data/*.db
 engine/data/
 engine/.env
 docs/AYNA-MAAS-API.md
+docs/APAR-TRIPY-API.md
+datas/apar_token.txt

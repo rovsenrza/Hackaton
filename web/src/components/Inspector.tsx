@@ -5,7 +5,7 @@ import { api, EngineOffline, post, type StaticData } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { approx, meters, pct, tons } from "@/lib/format";
 import { C } from "@/lib/theme";
-import type { Hub, WhatIfHub } from "@/lib/types";
+import type { AparLive, Hub, WhatIfHub } from "@/lib/types";
 import { getMap } from "./MapView";
 import { MiniMd } from "./Copilot";
 
@@ -129,7 +129,12 @@ function LiveArrivals({ lon, lat }: { lon: number; lat: number }) {
     const m = Math.round((new Date(iso).getTime() - Date.now()) / 60000);
     return m <= 0 ? "indi" : `${m} dəq`;
   };
-  const visits = d.stops.flatMap((s) => s.visits.map((v) => ({ ...v, stop: s.name }))).slice(0, 6);
+  const now = Date.now();
+  const visits = d.stops
+    .flatMap((s) => s.visits.map((v) => ({ ...v, stop: s.name, t: v.expected ? new Date(v.expected).getTime() : Infinity })))
+    .filter((v) => v.t >= now - 60000)
+    .sort((a, b) => a.t - b.t)
+    .slice(0, 6);
   return (
     <div className="mt-3 rounded border border-[var(--line)] p-2.5">
       <p className="flex items-center gap-2 text-xs font-semibold">
@@ -148,6 +153,24 @@ function LiveArrivals({ lon, lat }: { lon: number; lat: number }) {
       ) : (
         <p className="mt-1 text-xs text-[var(--muted)]">Yaxın {d.stops.length} dayanacağa hazırda yaxınlaşan avtobus yoxdur (və ya xidmət saatlarından kənardır).</p>
       )}
+    </div>
+  );
+}
+
+/** Canlı Apar vasitə sıxlığı: AYNA-nın öz parkinq şəbəkəsindən müstəqil, real bazar tələbatı sübutu */
+function AparSignal({ d }: { d: AparLive }) {
+  if (!d?.has_live) return null;
+  const types = Object.entries(d.by_type ?? {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(", ");
+  return (
+    <div className="mt-3 rounded border border-[var(--line)] p-2.5">
+      <p className="flex items-center gap-2 text-xs font-semibold">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--bike)]" />
+        Canlı Apar sıxlığı · 400 m
+      </p>
+      <p className="mt-1.5 text-xs">
+        Hazırda <b>{d.count}</b> vasitə{types ? ` (${types})` : ""}{d.avg_charge != null ? `, orta enerji ${d.avg_charge}%` : ""}.
+      </p>
+      <p className="mt-1 text-[10px] text-[var(--muted)]">AYNA parkinq şəbəkəsindən ayrı operator (Apar/Tripy): real istifadəçi davranışı, müstəqil tələbat sübutu.</p>
     </div>
   );
 }
@@ -291,6 +314,7 @@ export default function Inspector({ data }: { data: StaticData }) {
                 </p>
               )}
               <div className="mt-3"><HubMetrics h={wi} /></div>
+              <AparSignal d={wi.apar_live} />
             </>
           )}
           <div className="mt-3 flex gap-2">

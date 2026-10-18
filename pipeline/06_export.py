@@ -95,6 +95,10 @@ sizes["hubs.json"] = round((WEB_DATA / "hubs.json").stat().st_size / 1024)
 metrics = {}
 for f in ("convert_report", "demand_report", "hubs_report", "walk_graph_report", "ayna_report"):
     metrics[f.replace("_report", "")] = json.loads((BUILD / f"{f}.json").read_text())
+if (BUILD / "apar_report.json").exists():  # 08_apar_validate.py: canlı snapshot olmadan da pipeline işləyir
+    metrics["apar"] = json.loads((BUILD / "apar_report.json").read_text())
+if (BUILD / "value_report.json").exists():  # 09_value_tests.py
+    metrics["value"] = json.loads((BUILD / "value_report.json").read_text())
 (WEB_DATA / "metrics.json").write_text(json.dumps(metrics, ensure_ascii=False, separators=(",", ":"), default=float))
 sizes["metrics.json"] = round((WEB_DATA / "metrics.json").stat().st_size / 1024)
 
