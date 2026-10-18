@@ -14,7 +14,8 @@ from typing import Callable
 
 import anthropic
 
-MODEL = "claude-opus-5-5"
+# Model mühit dəyişəni ilə seçilir (xərc və keyfiyyət balansı); default: Claude Sonnet 5.5
+MODEL = os.environ.get("AYAN_COPILOT_MODEL", "claude-sonnet-5-5")
 MAX_STEPS = 8
 _sessions: dict[str, list] = {}
 
